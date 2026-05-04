@@ -1,7 +1,7 @@
 const https = require("https");
 const http = require("http");
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFBv9LrEs59nqO8Uqd2mm32H8l-Xfuxa1nkgYQfQBJ2i8CQsOYQQetYqvZ66sPg61T/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwf0L0OhlOLrvokZYsOzQwF4FhTS8fO799cCnQ__vqSBVJHITlfpro1KmE1CkTbFEyT/exec";
 const SECRET_TOKEN = "opm-RDW-2026";
 
 const CORS = {
@@ -24,31 +24,7 @@ exports.handler = async function(event, context) {
   try {
     const url = APPS_SCRIPT_URL + "?action=getLatest&token=" + encodeURIComponent(SECRET_TOKEN);
     const data = await fetchWithRedirects(url, 0);
-
-    // Daca nu avem imagine, returnam direct
-    if (!data.base64 || data.status !== "ok") {
-      return { statusCode: 200, headers: CORS, body: JSON.stringify(data) };
-    }
-
-    // Redimensionam imaginea cu sharp
-    const sharp = require("sharp");
-    const inputBuffer = Buffer.from(data.base64, "base64");
-    
-    const resizedBuffer = await sharp(inputBuffer)
-      .resize(1600, 1067, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 82 })
-      .toBuffer();
-
-    const resizedBase64 = resizedBuffer.toString("base64");
-    
-    console.log("Original size:", inputBuffer.length, "Resized:", resizedBuffer.length);
-
-    data.base64 = resizedBase64;
-    data.mimeType = "image/jpeg";
-    data.resized = true;
-
     return { statusCode: 200, headers: CORS, body: JSON.stringify(data) };
-
   } catch(err) {
     return {
       statusCode: 200, headers: CORS,
