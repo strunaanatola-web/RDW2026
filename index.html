@@ -305,6 +305,182 @@ window.openSettings = function() {
   if (overlay) overlay.style.display = "flex";
 };
 
+// All onclick handlers - defined early, delegate to main script when ready
+window.handleUploadClick = function() {
+  if (window.liveMode) return;
+  var fi = document.getElementById("fileInput");
+  if (fi) fi.click();
+};
+
+window.switchMode = function(mode) {
+  var tabManual = document.getElementById("tabManual");
+  var tabLive = document.getElementById("tabLive");
+  var liveStartBlock = document.getElementById("liveStartBlock");
+  var leftLabel = document.getElementById("leftPanelLabel");
+  if (tabManual) tabManual.classList.toggle("active", mode === "manual");
+  if (tabLive) tabLive.classList.toggle("active", mode === "live");
+  if (liveStartBlock) liveStartBlock.style.display = mode === "live" ? "block" : "none";
+  if (leftLabel) leftLabel.textContent = mode === "live" ? "Fotografie primită din Form" : "Imagine originală";
+  if (mode === "manual" && window.liveMode && typeof stopLive === "function") stopLive();
+};
+
+window.stopLive = function() {
+  window.liveMode = false;
+  if (window._pollInterval) { clearInterval(window._pollInterval); window._pollInterval = null; }
+  if (window._pollTimer) { clearInterval(window._pollTimer); window._pollTimer = null; }
+  var banner = document.getElementById("liveBanner");
+  var dot = document.getElementById("liveDot");
+  if (banner) banner.classList.remove("visible");
+  if (dot) dot.classList.remove("pulse");
+};
+
+window.startLive = function() {
+  var creds = {};
+  try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
+  if (!creds.scriptUrl || !creds.token) {
+    window.openSettings();
+    return;
+  }
+  window.liveMode = true;
+  var banner = document.getElementById("liveBanner");
+  var dot = document.getElementById("liveDot");
+  if (banner) banner.classList.add("visible");
+  if (dot) dot.classList.add("pulse");
+  // Show waiting state
+  var zone = document.getElementById("uploadZone");
+  var hint = document.getElementById("uploadHint");
+  if (zone) zone.classList.remove("has-image", "new-image");
+  if (hint) hint.innerHTML = '<div class="live-waiting"><div class="live-waiting-icon">📡</div><div class="live-waiting-text">Aștept fotografie...</div><div class="live-waiting-sub">Când un vizitator uploadează prin Google Form,<br>fotografia apare automat aici</div></div>';
+  // Start polling
+  var secs = 0;
+  window._pollInterval = setInterval(function() {
+    fetch("/.netlify/functions/proxy?token=" + encodeURIComponent(creds.token))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.fileId && data.fileId !== window._lastFileId && data.base64) {
+          window._lastFileId = data.fileId;
+          window._loadLiveImage(data.base64, data.mimeType || "image/jpeg");
+        }
+      })
+      .catch(function(e) { console.log("Poll error:", e.message); });
+  }, 5000);
+  window._pollTimer = setInterval(function() {
+    secs += 5;
+    var el = document.getElementById("liveCounter");
+    if (el) el.textContent = "Verificat acum " + (secs < 60 ? secs + "s" : Math.floor(secs/60) + "m " + (secs%60) + "s");
+  }, 5000);
+};
+
+window._loadLiveImage = function(base64, mimeType) {
+  var img = new Image();
+  img.onload = function() {
+    var MAX_PX = 1200;
+    var w = img.naturalWidth, h = img.naturalHeight;
+    if (w > MAX_PX || h > MAX_PX) {
+      if (w > h) { h = Math.round(h * MAX_PX / w); w = MAX_PX; }
+      else { w = Math.round(w * MAX_PX / h); h = MAX_PX; }
+    }
+    var canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0,0,w,h);
+    ctx.drawImage(img, 0, 0, w, h);
+    var dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    window._uploadedImageB64 = dataUrl.split(",")[1];
+    window._uploadedMimeType = "image/jpeg";
+    var zone = document.getElementById("uploadZone");
+    var hint = document.getElementById("uploadHint");
+    if (zone) zone.classList.add("has-image");
+    if (hint) hint.innerHTML = '<img src="' + dataUrl + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1A1A1A;">';
+    var banner = document.getElementById("newPhotoBanner");
+    if (banner) { banner.classList.add("visible"); setTimeout(function(){ banner.classList.remove("visible"); }, 4000); }
+    var btn = document.getElementById("btnGenerate");
+    if (btn) btn.disabled = false;
+  };
+  img.src = "data:" + mimeType + ";base64," + base64;
+};
+
+window.stopGeneration = function() {
+  if (window._abortCtrl) { window._abortCtrl.abort(); window._abortCtrl = null; }
+  window.isGenerating = false;
+  var btn = document.getElementById("btnGenerate");
+  var stopBtn = document.getElementById("btnStopGen");
+  var resultBox = document.getElementById("resultBox");
+  var baLabels = document.getElementById("baLabels");
+  var dlBtn = document.getElementById("downloadBtn");
+  if (btn) { btn.disabled = false; btn.textContent = "Generează"; }
+  if (stopBtn) stopBtn.style.display = "none";
+  if (resultBox) resultBox.innerHTML = '<div class="result-placeholder"><div class="result-icon">→</div><div class="result-hint">Rezultatul va apărea aici</div></div>';
+  if (baLabels) baLabels.classList.remove("visible");
+  if (dlBtn) dlBtn.style.display = "none";
+  window._uploadedImageB64 = null;
+  var zone = document.getElementById("uploadZone");
+  var hint = document.getElementById("uploadHint");
+  if (zone) zone.classList.remove("has-image", "new-image");
+  if (hint) hint.innerHTML = '<div class="upload-cross"></div><div class="upload-hint">Click pentru a încărca</div><div class="upload-hint" style="font-size:9px;opacity:0.6">JPG · PNG</div>';
+};
+
+window.analyzeImage = function() {
+  var creds = {};
+  try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
+  if (!window._uploadedImageB64 || !creds.apiKey) return;
+  var section = document.getElementById("analysisSection");
+  var spinner = document.getElementById("analysisSpinner");
+  if (section) section.style.display = "block";
+  if (spinner) spinner.style.display = "inline";
+  var cleanKey = (creds.apiKey || "").replace(/[^ -~]/g, "").trim();
+  var prompt = "Analyze this urban/architectural photograph briefly in Romanian. Format:
+ANALIZA: [2 sentences about building style and condition]
+SUGESTIE PROMPT: [2-3 specific prompt additions for AI regeneration]";
+  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": cleanKey },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: window._uploadedMimeType || "image/jpeg", data: window._uploadedImageB64 } }] }],
+      generationConfig: { maxOutputTokens: 250 }
+    })
+  }).then(function(r) { return r.json(); })
+    .then(function(data) {
+      var text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) ? data.candidates[0].content.parts[0].text : "";
+      var suggEl = document.getElementById("analysisSuggestion");
+      var hintEl = document.getElementById("analysisApplyHint");
+      if (spinner) spinner.style.display = "none";
+      if (text && suggEl) {
+        suggEl.textContent = text;
+        suggEl.style.display = "block";
+        var m = text.match(/SUGESTIE PROMPT:\s*(.+)/s);
+        suggEl.dataset.promptSuggestion = m ? m[1].trim() : text;
+        if (hintEl) hintEl.style.display = "block";
+      }
+      var reBtn = document.getElementById("reanalyzeBtn");
+      if (reBtn) reBtn.style.display = "inline";
+    })
+    .catch(function(e) {
+      if (spinner) spinner.style.display = "none";
+      console.log("Analysis error:", e.message);
+    });
+};
+
+window.applySuggestion = function() {
+  var suggEl = document.getElementById("analysisSuggestion");
+  var promptEl = document.getElementById("promptVisible");
+  if (suggEl && promptEl) {
+    promptEl.value = suggEl.dataset.promptSuggestion || suggEl.textContent;
+    promptEl.style.borderColor = "var(--green)";
+    setTimeout(function(){ promptEl.style.borderColor = ""; }, 2000);
+  }
+};
+
+window.saveToDrive = function() {
+  alert("Funcție Drive în curs de configurare.");
+};
+
+window.autoDownload = function(src, name) {
+  var a = document.createElement("a");
+  a.href = src; a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+};
+
 // Show modal on load if no credentials saved
 document.addEventListener("DOMContentLoaded", function() {
   try {
@@ -318,6 +494,245 @@ document.addEventListener("DOMContentLoaded", function() {
     var overlay = document.getElementById("modalOverlay");
     if (overlay) overlay.style.display = "flex";
   }
+
+  // File input change handler
+  var fileInput = document.getElementById("fileInput");
+  if (fileInput) {
+    fileInput.addEventListener("change", function(e) {
+      var file = e.target.files[0]; if (!file) return;
+      var mimeType = file.type || "image/jpeg";
+      var MAX_PX = 1200;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var img = new Image();
+        img.onload = function() {
+          var w = img.naturalWidth || img.width;
+          var h = img.naturalHeight || img.height;
+          if (w > MAX_PX || h > MAX_PX) {
+            if (w > h) { h = Math.round(h * MAX_PX / w); w = MAX_PX; }
+            else { w = Math.round(w * MAX_PX / h); h = MAX_PX; }
+          }
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0,0,w,h);
+          ctx.drawImage(img, 0, 0, w, h);
+          var dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          window._uploadedImageB64 = dataUrl.split(",")[1];
+          window._uploadedMimeType = "image/jpeg";
+          var zone = document.getElementById("uploadZone");
+          var hint = document.getElementById("uploadHint");
+          if (zone) zone.classList.add("has-image");
+          if (hint) hint.innerHTML = '<img src="' + dataUrl + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1A1A1A;">';
+          var btn = document.getElementById("btnGenerate");
+          var creds = {};
+          try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(x) {}
+          if (btn) btn.disabled = !(creds.apiKey && creds.apiKey.length > 10);
+          // Auto-analyze
+          setTimeout(window.analyzeImage, 600);
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Generate button handler
+  var btnGenerate = document.getElementById("btnGenerate");
+  if (btnGenerate) {
+    btnGenerate.addEventListener("click", function() {
+      if (window.isGenerating) return;
+      var creds = {};
+      try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
+      var imgB64 = window._uploadedImageB64;
+      var imgMime = window._uploadedMimeType || "image/jpeg";
+      if (!imgB64 || !creds.apiKey) return;
+
+      var MODEL_MAP = {
+        "gemini-2.5-flash-image": true,
+        "gemini-3.1-flash-image-preview": false,
+        "gemini-3-pro-image-preview": true
+      };
+      var model = creds.model || "gemini-2.5-flash-image";
+      var effectiveModel = MODEL_MAP[model] === false ? "gemini-2.5-flash-image" : model;
+      var cleanKey = (creds.apiKey || "").replace(/[^ -~]/g, "").trim();
+
+      // Build prompt
+      var activeTags = window._activeTags || ["fatade"];
+      var tagLabels = {
+        fatade: "completely renovated building facades with fresh plaster, new window frames, balconies, warm neutral color palette",
+        verde: "lush mature trees lining the street, flower boxes on windows, climbing plants on walls",
+        pietonal: "wide pedestrian sidewalks with quality paving stones, outdoor cafe seating",
+        iluminat: "elegant modern LED street lighting with warm 3000K tone, ornamental light poles",
+        mobilier: "high-quality urban furniture: wooden benches, bicycle racks, waste bins",
+        material: "premium facade materials — exposed brick, natural stone cladding, wood accents"
+      };
+      var stilLabels = {
+        contemporan: "contemporary European urban regeneration style",
+        traditional: "traditional Romanian architectural style",
+        minimalist: "minimalist Scandinavian style",
+        nordic: "Nordic modern style",
+        mediteranean: "Mediterranean style"
+      };
+      var stil = (document.getElementById("stil") || {}).value || "contemporan";
+      var intens = parseInt((document.getElementById("intensitate") || {}).value || "7");
+      var intensLabel = intens >= 8 ? "dramatic" : intens >= 5 ? "significant" : "subtle";
+      var interventions = activeTags.map(function(t) { return tagLabels[t] || t; }).join("; ");
+      var userExtra = ((document.getElementById("promptVisible") || {}).value || "").trim();
+
+      var prompt = "You are an expert urban regeneration architect.
+
+Transform this photograph into a photorealistic vision of urban renewal. Apply " + (stilLabels[stil] || stil) + ".
+
+Interventions (intensity: " + intensLabel + ", " + intens + "/10):
+- " + interventions + (userExtra ? "
+
+Additional: " + userExtra : "") + "
+
+CRITICAL: Keep perspective and angle exactly as is. Same aspect ratio. Same camera angle. Photorealistic. Focus on architecture.";
+
+      window.isGenerating = true;
+      this.disabled = true;
+      this.textContent = "Se generează...";
+      var stopBtn = document.getElementById("btnStopGen");
+      if (stopBtn) stopBtn.style.display = "block";
+
+      var resultBox = document.getElementById("resultBox");
+      var errorBox = document.getElementById("errorBox");
+      var baLabels = document.getElementById("baLabels");
+      var dlBtn = document.getElementById("downloadBtn");
+      var driveBtn = document.getElementById("driveBtn");
+
+      if (errorBox) errorBox.style.display = "none";
+      if (dlBtn) dlBtn.style.display = "none";
+      if (driveBtn) driveBtn.style.display = "none";
+      if (baLabels) baLabels.classList.remove("visible");
+      if (resultBox) resultBox.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><div class="loading-text" id="loadingText">Analizare imagine</div>' + (effectiveModel !== model ? '<div class="loading-sub">Fallback: gemini-2.5-flash-image</div>' : '') + '</div>';
+
+      var msgs = ["Analizare imagine", "Aplicare stil", "Regenerare fatade", "Randare finala"];
+      var mi = 0;
+      var interval = setInterval(function() {
+        var el = document.getElementById("loadingText");
+        if (el) { el.textContent = msgs[mi % msgs.length]; mi++; }
+      }, 2500);
+
+      window._abortCtrl = new AbortController();
+      var ctrl = window._abortCtrl;
+      var timeoutId = setTimeout(function() { ctrl.abort(); }, 150000);
+      var self = this;
+
+      fetch("https://generativelanguage.googleapis.com/v1beta/models/" + effectiveModel + ":generateContent", {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: { "Content-Type": "application/json", "x-goog-api-key": cleanKey },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: imgMime, data: imgB64 } }] }],
+          generationConfig: { responseModalities: ["IMAGE", "TEXT"] }
+        })
+      })
+      .then(function(r) { clearTimeout(timeoutId); window._abortCtrl = null; return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
+      .then(function(rd) {
+        var data = rd.data;
+        if (!rd.ok) throw new Error((data.error && data.error.message) || "HTTP error");
+        if (data.error) {
+          var em = data.error.message || "";
+          if (em.includes("high demand") || em.includes("overloaded")) throw new Error("RETRY:" + em);
+          throw new Error(em);
+        }
+        var candidate = data.candidates && data.candidates[0];
+        if (!candidate) throw new Error("Cerere blocata");
+        if (candidate.finishReason && candidate.finishReason !== "STOP" && candidate.finishReason !== "MAX_TOKENS")
+          throw new Error("Oprита: " + candidate.finishReason);
+        var parts = (candidate.content && candidate.content.parts) || [];
+        var imgPart = null;
+        for (var i=0; i<parts.length; i++) { if (parts[i].inlineData && parts[i].inlineData.mimeType && parts[i].inlineData.mimeType.indexOf("image/") === 0) { imgPart = parts[i]; break; } }
+        if (!imgPart) throw new Error("Fara imagine in raspuns");
+
+        var genSrc = "data:" + imgPart.inlineData.mimeType + ";base64," + imgPart.inlineData.data;
+        var origSrc = "data:" + imgMime + ";base64," + imgB64;
+        if (resultBox) resultBox.innerHTML = '<div class="slider-wrap"><img class="split-img-base" src="' + origSrc + '"><img class="split-img-gen" id="genImg" src="' + genSrc + '"><div class="split-divider" id="splitDivider"><div class="split-handle">⇔</div></div></div>';
+        if (baLabels) baLabels.classList.add("visible");
+
+        var fileName = "urban-regenerare-" + new Date().toISOString().slice(0,19).replace(/:/g,"-") + ".jpg";
+        window.autoDownload(genSrc, fileName);
+        window._lastGenSrc = genSrc;
+        if (dlBtn) { dlBtn.style.display = "inline-block"; dlBtn.onclick = function() { window.autoDownload(genSrc, fileName); }; }
+        if (driveBtn) driveBtn.style.display = "inline-block";
+        var autoNote = document.getElementById("autoSaveNote");
+        if (autoNote) { autoNote.style.display = "inline"; setTimeout(function(){ autoNote.style.display = "none"; }, 4000); }
+
+        // Init splider
+        var divider = document.getElementById("splitDivider");
+        var genImg = document.getElementById("genImg");
+        if (divider && genImg && resultBox) {
+          var dragging = false;
+          var moveSlider = function(clientX) {
+            var rect = resultBox.getBoundingClientRect();
+            var pct = Math.max(2, Math.min(98, ((clientX - rect.left) / rect.width) * 100));
+            divider.style.left = pct + "%"; genImg.style.clipPath = "inset(0 0 0 " + pct + "%)";
+          };
+          divider.addEventListener("mousedown", function(e) { dragging = true; e.preventDefault(); });
+          document.addEventListener("mouseup", function() { dragging = false; });
+          document.addEventListener("mousemove", function(e) { if (dragging) moveSlider(e.clientX); });
+          divider.addEventListener("touchmove", function(e) { e.preventDefault(); moveSlider(e.touches[0].clientX); }, { passive: false });
+        }
+      })
+      .catch(function(err) {
+        clearTimeout(timeoutId); window._abortCtrl = null;
+        var errMsg = err.name === "AbortError" ? "Timeout sau oprit. Incearca din nou." : err.message;
+        if (resultBox) resultBox.innerHTML = '<div class="result-placeholder"><div class="result-icon" style="color:#CC1B1B">!</div><div class="result-hint" style="color:#CC1B1B">Eroare</div></div>';
+        if (errorBox) { errorBox.style.display = "block"; errorBox.textContent = errMsg; }
+      })
+      .finally(function() {
+        clearInterval(interval);
+        window.isGenerating = false;
+        self.disabled = false;
+        self.textContent = "Generează din nou";
+        if (stopBtn) stopBtn.style.display = "none";
+        var creds2 = {};
+        try { creds2 = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(x) {}
+        self.disabled = !(window._uploadedImageB64 && creds2.apiKey);
+      });
+    });
+  }
+
+  // Tag click handlers
+  document.querySelectorAll(".tag").forEach(function(tag) {
+    tag.addEventListener("click", function() {
+      var v = tag.dataset.val;
+      window._activeTags = window._activeTags || ["fatade"];
+      var idx = window._activeTags.indexOf(v);
+      if (idx >= 0) {
+        if (window._activeTags.length > 1) {
+          window._activeTags.splice(idx, 1);
+          tag.classList.remove("active");
+        }
+      } else {
+        window._activeTags.push(v);
+        tag.classList.add("active");
+      }
+    });
+  });
+
+  // Intensitate slider
+  var intensSlider = document.getElementById("intensitate");
+  if (intensSlider) {
+    intensSlider.addEventListener("input", function() {
+      var el = document.getElementById("intensitate-val");
+      if (el) el.textContent = this.value;
+    });
+  }
+
+  // Init activeTags
+  window._activeTags = ["fatade"];
+  window.isGenerating = false;
+  window.liveMode = false;
+  window._lastFileId = null;
+  window._uploadedImageB64 = null;
+  window._uploadedMimeType = "image/jpeg";
+  window._lastGenSrc = null;
+  window._abortCtrl = null;
+
 });
 </script>
 </head>
