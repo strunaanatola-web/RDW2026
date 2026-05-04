@@ -517,7 +517,7 @@ document.getElementById("modalOverlay").addEventListener("click", function(e) {
 // PROMPTURI PRESTABILITE — invizibile
 // ═══════════════════════════════
 const PROMPT_PREFIX = `You are an expert urban regeneration architect and photorealistic visualization artist working for Optim Project Management, a Romanian architecture and project management firm.
-Your task is to transform urban photographs into photorealistic visions of regenerated neighborhoods, suitable for architectural presentations and urban planning proposals.`;
+Your task is to transform urban photographs into photorealistic visions of regenerated neighborhoods, suitable for architectural presentations and urban planning proposals. Focus on the architectural and urban elements — buildings, infrastructure, public spaces, greenery, and lighting.`;
 
 const PROMPT_SUFFIX = `
 
@@ -529,7 +529,8 @@ CRITICAL TECHNICAL REQUIREMENTS:
 - Do NOT crop, zoom, rotate, or reframe the image in any way
 - Remove decay, graffiti, crumbling plaster — replace with pristine surfaces
 - Photorealistic result, indistinguishable from a real architectural photograph
-- No people, no vehicles — architecture and urban space only
+- Focus on architecture and urban space
+- Minimize people and vehicles, or make them blurred/distant
 - Golden hour warm lighting, soft shadows
 - No watermarks, no text overlays`;
 
@@ -610,8 +611,12 @@ function compressImage(file, callback) {
   reader.onload = function(ev) {
     const img = new Image();
     img.onload = function() {
-      let w = img.width, h = img.height;
-      // Scale down if needed
+      // Wait for naturalWidth to be available
+      if (!img.naturalWidth) {
+        setTimeout(() => img.onload(), 50);
+        return;
+      }
+      let w = img.naturalWidth, h = img.naturalHeight;
       if (w > MAX_PX || h > MAX_PX) {
         if (w > h) { h = Math.round(h * MAX_PX / w); w = MAX_PX; }
         else { w = Math.round(w * MAX_PX / h); h = MAX_PX; }
@@ -619,13 +624,21 @@ function compressImage(file, callback) {
       const canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
       const compressed = canvas.toDataURL("image/jpeg", QUALITY);
       const b64 = compressed.split(",")[1];
-      console.log("Original size:", Math.round(file.size/1024) + "KB",
-                  "Compressed:", Math.round(b64.length * 0.75 / 1024) + "KB",
+      console.log("Original:", Math.round(file.size/1024) + "KB",
+                  "→ Compressed:", Math.round(b64.length * 0.75 / 1024) + "KB",
                   "Dimensions:", w + "x" + h);
       callback(compressed, b64, "image/jpeg");
+    };
+    img.onerror = function() {
+      // Fallback: use original if compression fails
+      console.log("Compression failed, using original");
+      const b64 = ev.target.result.split(",")[1];
+      callback(ev.target.result, b64, file.type || "image/jpeg");
     };
     img.src = ev.target.result;
   };
