@@ -1178,30 +1178,63 @@ function initGoogleDriveAuth() {
 }
 
 function authenticateAndSaveDrive() {
+  if (typeof google === "undefined" || !google.accounts) {
+    alert("Google Sign-In nu s-a încărcat. Încearcă din nou în câteva secunde.");
+    return;
+  }
   const client = google.accounts.oauth2.initTokenClient({
-    client_id: "GOOGLE_CLIENT_ID_HERE",
+    client_id: "605462422571-s9i07sfr5bu3dgnvssm7of7dd3on85u3.apps.googleusercontent.com",
     scope: "https://www.googleapis.com/auth/drive.file",
     callback: function(response) {
       if (response.access_token) {
         driveAccessToken = response.access_token;
         saveToDrive();
+      } else {
+        console.error("OAuth failed:", response);
+        alert("Autentificare Google eșuată. Verifică setările OAuth.");
       }
     }
   });
   client.requestAccessToken();
 }
 
+async function getOrCreateDriveFolder(folderName) {
+  if (!driveAccessToken) return null;
+  try {
+    // Search for existing folder
+    const searchRes = await fetch(
+      "https://www.googleapis.com/drive/v3/files?q=" +
+      encodeURIComponent("name='" + folderName + "' and mimeType='application/vnd.google-apps.folder' and trashed=false") +
+      "&fields=files(id,name)",
+      { headers: { "Authorization": "Bearer " + driveAccessToken } }
+    );
+    const searchData = await searchRes.json();
+    if (searchData.files && searchData.files.length > 0) {
+      return searchData.files[0].id;
+    }
+    // Create folder if not found
+    const createRes = await fetch("https://www.googleapis.com/drive/v3/files", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + driveAccessToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ name: folderName, mimeType: "application/vnd.google-apps.folder" })
+    });
+    const folder = await createRes.json();
+    return folder.id || null;
+  } catch(e) {
+    console.log("Folder error:", e);
+    return null;
+  }
+}
+
 async function saveToDrive() {
   if (!lastGeneratedSrc) return;
 
   if (!driveAccessToken) {
-    // Need Google Client ID - show info
-    const note = confirm(
-      "Pentru salvarea pe Google Drive ai nevoie de un Google OAuth Client ID.\n\n" +
-      "Momentan imaginea se descarcă local.\n\n" +
-      "Vrei să descarci acum?"
-    );
-    if (note) autoDownload(lastGeneratedSrc, "urban-regenerare-" + Date.now() + ".jpg");
+    // Authenticate first then save
+    authenticateAndSaveDrive();
     return;
   }
 
@@ -1213,8 +1246,14 @@ async function saveToDrive() {
 
     const fileName = "urban-regenerare-" + new Date().toISOString().slice(0,19).replace(/:/g,"-") + ".jpg";
 
-    // Create file in Drive
-    const metadata = { name: fileName, mimeType: "image/jpeg" };
+    // Create file in Drive folder "Urban Regenerare"
+    // Note: folder is auto-created if it doesn't exist
+    const folderId = await getOrCreateDriveFolder("Urban Regenerare — RDW");
+    const metadata = {
+      name: fileName,
+      mimeType: "image/jpeg",
+      parents: folderId ? [folderId] : []
+    };
     const form = new FormData();
     form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
     form.append("file", blob);
@@ -1226,10 +1265,16 @@ async function saveToDrive() {
     });
 
     if (res.ok) {
-      const data = await res.json();
-      alert("✓ Salvat pe Google Drive: " + fileName);
+      const fileData = await res.json();
+      console.log("Saved to Drive:", fileData.id, fileName);
+      // Show success in UI
+      const note = document.getElementById("autoSaveNote");
+      note.textContent = "✓ Salvat pe Google Drive: " + fileName;
+      note.style.display = "inline";
+      setTimeout(() => { note.style.display = "none"; note.textContent = ""; }, 5000);
     } else {
-      throw new Error("Drive error: " + res.status);
+      const errData = await res.json().catch(() => ({}));
+      throw new Error("Drive error " + res.status + ": " + (errData.error?.message || ""));
     }
   } catch(err) {
     console.log("Drive save error:", err);
