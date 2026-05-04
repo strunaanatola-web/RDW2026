@@ -450,10 +450,17 @@ function getCredentials() {
 }
 
 function saveCredentials() {
-  const apiKey = document.getElementById("setupApiKey").value.trim();
-  const model = document.getElementById("setupModel").value;
-  const scriptUrl = document.getElementById("setupScriptUrl").value.trim();
-  const token = document.getElementById("setupToken").value.trim();
+  const apiKeyEl = document.getElementById("setupApiKey");
+  const modelEl = document.getElementById("setupModel");
+  const scriptUrlEl = document.getElementById("setupScriptUrl");
+  const tokenEl = document.getElementById("setupToken");
+  
+  if (!apiKeyEl) { console.error("Modal elements not found"); return; }
+  
+  const apiKey = apiKeyEl.value.trim();
+  const model = modelEl ? modelEl.value : "gemini-2.5-flash-image";
+  const scriptUrl = scriptUrlEl ? scriptUrlEl.value.trim() : "";
+  const token = tokenEl ? tokenEl.value.trim() : "";
 
   // Clean API key from any non-ASCII chars (copy-paste artifacts)
   const cleanKey = apiKey.replace(/[^ -~]/g, "").trim();
@@ -1022,20 +1029,25 @@ function _finishLoadLive(dataUrl, fileName) {
   setTimeout(analyzeImage, 500);
 }
 
-// Show cleaned key preview as user types
-document.getElementById("setupApiKey").addEventListener("input", function() {
-  const clean = this.value.replace(/[^ -~]/g, "").trim();
-  const preview = document.getElementById("keyPreview");
-  if (clean.length > 8) {
-    preview.textContent = "Cheie: " + clean.slice(0,6) + "..." + clean.slice(-4) + " (" + clean.length + " caractere)";
-    preview.style.color = "#5C9E3A";
-  } else if (clean.length > 0) {
-    preview.textContent = "Prea scurtă (" + clean.length + " caractere)";
-    preview.style.color = "#CC1B1B";
-  } else {
-    preview.textContent = "";
-  }
-});
+// Show cleaned key preview as user types — wrapped in init to avoid null errors
+function initKeyPreview() {
+  const el = document.getElementById("setupApiKey");
+  if (!el) return;
+  el.addEventListener("input", function() {
+    const clean = this.value.replace(/[^ -~]/g, "").trim();
+    const preview = document.getElementById("keyPreview");
+    if (!preview) return;
+    if (clean.length > 8) {
+      preview.textContent = "Cheie: " + clean.slice(0,6) + "..." + clean.slice(-4) + " (" + clean.length + " caractere)";
+      preview.style.color = "#5C9E3A";
+    } else if (clean.length > 0) {
+      preview.textContent = "Prea scurtă (" + clean.length + " caractere)";
+      preview.style.color = "#CC1B1B";
+    } else {
+      preview.textContent = "";
+    }
+  });
+}
 
 // ═══════════════════════════════════════
 // IMAGE ANALYSIS — Gemini Vision
@@ -1240,6 +1252,8 @@ async function saveToDrive() {
     document.getElementById("setupToken").value = creds.token || "";
   }
 
+  // Init key preview listener
+  initKeyPreview();
   // Init Google Drive auth (loads GSI script)
   initGoogleDriveAuth();
 })();
