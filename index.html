@@ -240,6 +240,57 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
 .prompt-visible:focus { border-color: var(--ink); }
 .prompt-hint { margin-top: 6px; font-size: 10px; color: #BBBBBB; font-style: italic; }
 </style>
+
+<script>
+// Minimal credential functions - defined early to ensure availability
+var STORAGE_KEY = "rdw_creds_v1";
+
+window.saveCredentials = function() {
+  try {
+    var apiKey = (document.getElementById("setupApiKey").value || "").replace(/[^\x20-\x7E]/g, "").trim();
+    var model = (document.getElementById("setupModel") || {}).value || "gemini-2.5-flash-image";
+    var scriptUrl = ((document.getElementById("setupScriptUrl") || {}).value || "").trim();
+    var token = ((document.getElementById("setupToken") || {}).value || "").trim();
+
+    if (apiKey.length < 10) {
+      var err = document.getElementById("modalError");
+      if (err) { err.textContent = "API Key invalid (minim 10 caractere)."; err.style.display = "block"; }
+      return;
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey: apiKey, model: model, scriptUrl: scriptUrl, token: token }));
+    
+    var overlay = document.getElementById("modalOverlay");
+    if (overlay) overlay.style.display = "none";
+    
+    if (typeof applyCredentials === "function") {
+      applyCredentials({ apiKey: apiKey, model: model, scriptUrl: scriptUrl, token: token });
+    } else {
+      location.reload();
+    }
+  } catch(e) {
+    alert("Eroare: " + e.message);
+  }
+};
+
+window.clearCredentials = function() {
+  if (confirm("Stergi credentialele salvate?")) {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }
+};
+
+window.openSettings = function() {
+  var creds = {};
+  try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
+  if (document.getElementById("setupApiKey")) document.getElementById("setupApiKey").value = creds.apiKey || "";
+  if (document.getElementById("setupModel")) document.getElementById("setupModel").value = creds.model || "gemini-2.5-flash-image";
+  if (document.getElementById("setupScriptUrl")) document.getElementById("setupScriptUrl").value = creds.scriptUrl || "";
+  if (document.getElementById("setupToken")) document.getElementById("setupToken").value = creds.token || "";
+  var overlay = document.getElementById("modalOverlay");
+  if (overlay) overlay.style.display = "flex";
+};
+</script>
 </head>
 <body>
 
@@ -450,36 +501,54 @@ function getCredentials() {
 }
 
 function saveCredentials() {
-  const apiKeyEl = document.getElementById("setupApiKey");
-  const modelEl = document.getElementById("setupModel");
-  const scriptUrlEl = document.getElementById("setupScriptUrl");
-  const tokenEl = document.getElementById("setupToken");
-  
-  if (!apiKeyEl) { console.error("Modal elements not found"); return; }
-  
-  const apiKey = apiKeyEl.value.trim();
-  const model = modelEl ? modelEl.value : "gemini-2.5-flash-image";
-  const scriptUrl = scriptUrlEl ? scriptUrlEl.value.trim() : "";
-  const token = tokenEl ? tokenEl.value.trim() : "";
-
-  // Clean API key from any non-ASCII chars (copy-paste artifacts)
-  const cleanKey = apiKey.replace(/[^ -~]/g, "").trim();
-  
-  if (!cleanKey || cleanKey.length < 10) {
-    showModalError("API Key este obligatoriu și trebuie să conțină minim 10 caractere.");
-    return;
-  }
-
-  const creds = { apiKey: cleanKey, model, scriptUrl, token, savedAt: Date.now() };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(creds));
-  } catch(e) {
-    showModalError("Nu pot salva în browser. Verifică setările de privacy.");
-    return;
-  }
+    var apiKeyEl = document.getElementById("setupApiKey");
+    var modelEl = document.getElementById("setupModel");
+    var scriptUrlEl = document.getElementById("setupScriptUrl");
+    var tokenEl = document.getElementById("setupToken");
 
-  closeModal();
-  applyCredentials(creds);
+    if (!apiKeyEl) {
+      alert("Eroare: elementele formularului nu au fost gasite.");
+      return;
+    }
+
+    var apiKey = apiKeyEl.value.trim();
+    var model = modelEl ? modelEl.value : "gemini-2.5-flash-image";
+    var scriptUrl = scriptUrlEl ? scriptUrlEl.value.trim() : "";
+    var token = tokenEl ? tokenEl.value.trim() : "";
+
+    // Remove non-ASCII from API key
+    apiKey = apiKey.replace(/[^\x20-\x7E]/g, "").trim();
+
+    if (!apiKey || apiKey.length < 10) {
+      var errEl = document.getElementById("modalError");
+      if (errEl) {
+        errEl.textContent = "API Key este obligatoriu (minim 10 caractere).";
+        errEl.style.display = "block";
+      } else {
+        alert("API Key este obligatoriu.");
+      }
+      return;
+    }
+
+    var creds = {
+      apiKey: apiKey,
+      model: model,
+      scriptUrl: scriptUrl,
+      token: token,
+      savedAt: Date.now()
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(creds));
+    
+    var overlay = document.getElementById("modalOverlay");
+    if (overlay) overlay.style.display = "none";
+    
+    applyCredentials(creds);
+    
+  } catch(err) {
+    alert("Eroare la salvare: " + err.message);
+  }
 }
 
 function applyCredentials(creds) {
@@ -515,11 +584,12 @@ function openSettings() {
     document.getElementById("setupScriptUrl").value = creds.scriptUrl || "";
     document.getElementById("setupToken").value = creds.token || "";
   }
-  document.getElementById("modalOverlay").classList.remove("hidden");
+  document.getElementById("modalOverlay").style.display = "flex";
 }
 
 function closeModal() {
-  document.getElementById("modalOverlay").classList.add("hidden");
+  var el = document.getElementById("modalOverlay");
+  if (el) el.style.display = "none";
 }
 
 function showModalError(msg) {
@@ -531,8 +601,8 @@ function showModalError(msg) {
 // Close modal on overlay click
 document.getElementById("modalOverlay").addEventListener("click", function(e) {
   if (e.target === this) {
-    const creds = getCredentials();
-    if (creds) closeModal(); // only close if already configured
+    var creds = getCredentials();
+    if (creds) closeModal();
   }
 });
 
