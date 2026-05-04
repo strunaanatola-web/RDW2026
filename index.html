@@ -320,7 +320,7 @@ window.switchMode = function(mode) {
   if (tabManual) tabManual.classList.toggle("active", mode === "manual");
   if (tabLive) tabLive.classList.toggle("active", mode === "live");
   if (liveStartBlock) liveStartBlock.style.display = mode === "live" ? "block" : "none";
-  if (leftLabel) leftLabel.textContent = mode === "live" ? "Fotografie primită din Form" : "Imagine originală";
+  if (leftLabel) leftLabel.textContent = mode === "live" ? "Fotografie primita din Form" : "Imagine originala";
   if (mode === "manual" && window.liveMode && typeof stopLive === "function") stopLive();
 };
 
@@ -350,7 +350,7 @@ window.startLive = function() {
   var zone = document.getElementById("uploadZone");
   var hint = document.getElementById("uploadHint");
   if (zone) zone.classList.remove("has-image", "new-image");
-  if (hint) hint.innerHTML = '<div class="live-waiting"><div class="live-waiting-icon">📡</div><div class="live-waiting-text">Aștept fotografie...</div><div class="live-waiting-sub">Când un vizitator uploadează prin Google Form,<br>fotografia apare automat aici</div></div>';
+  if (hint) hint.innerHTML = '<div class="live-waiting"><div class="live-waiting-icon">[live]</div><div class="live-waiting-text">Astept fotografie...</div><div class="live-waiting-sub">Cand un vizitator uploadeaza prin Google Form,<br>fotografia apare automat aici</div></div>';
   // Start polling
   var secs = 0;
   window._pollInterval = setInterval(function() {
@@ -408,16 +408,16 @@ window.stopGeneration = function() {
   var resultBox = document.getElementById("resultBox");
   var baLabels = document.getElementById("baLabels");
   var dlBtn = document.getElementById("downloadBtn");
-  if (btn) { btn.disabled = false; btn.textContent = "Generează"; }
+  if (btn) { btn.disabled = false; btn.textContent = "Genereaza"; }
   if (stopBtn) stopBtn.style.display = "none";
-  if (resultBox) resultBox.innerHTML = '<div class="result-placeholder"><div class="result-icon">→</div><div class="result-hint">Rezultatul va apărea aici</div></div>';
+  if (resultBox) resultBox.innerHTML = '<div class="result-placeholder"><div class="result-icon">-></div><div class="result-hint">Rezultatul va aparea aici</div></div>';
   if (baLabels) baLabels.classList.remove("visible");
   if (dlBtn) dlBtn.style.display = "none";
   window._uploadedImageB64 = null;
   var zone = document.getElementById("uploadZone");
   var hint = document.getElementById("uploadHint");
   if (zone) zone.classList.remove("has-image", "new-image");
-  if (hint) hint.innerHTML = '<div class="upload-cross"></div><div class="upload-hint">Click pentru a încărca</div><div class="upload-hint" style="font-size:9px;opacity:0.6">JPG · PNG</div>';
+  if (hint) hint.innerHTML = '<div class="upload-cross"></div><div class="upload-hint">Click pentru a incarca</div><div class="upload-hint" style="font-size:9px;opacity:0.6">JPG . PNG</div>';
 };
 
 window.analyzeImage = function() {
@@ -448,7 +448,7 @@ SUGESTIE PROMPT: [2-3 specific prompt additions for AI regeneration]";
       if (text && suggEl) {
         suggEl.textContent = text;
         suggEl.style.display = "block";
-        var m = text.match(/SUGESTIE PROMPT:\s*(.+)/s);
+        var m = text.match(/SUGESTIE PROMPT:[\s\S]*?([\s\S]+)$/);
         suggEl.dataset.promptSuggestion = m ? m[1].trim() : text;
         if (hintEl) hintEl.style.display = "block";
       }
@@ -472,7 +472,7 @@ window.applySuggestion = function() {
 };
 
 window.saveToDrive = function() {
-  alert("Funcție Drive în curs de configurare.");
+  alert("Functie Drive in curs de configurare.");
 };
 
 window.autoDownload = function(src, name) {
@@ -565,7 +565,7 @@ document.addEventListener("DOMContentLoaded", function() {
         pietonal: "wide pedestrian sidewalks with quality paving stones, outdoor cafe seating",
         iluminat: "elegant modern LED street lighting with warm 3000K tone, ornamental light poles",
         mobilier: "high-quality urban furniture: wooden benches, bicycle racks, waste bins",
-        material: "premium facade materials — exposed brick, natural stone cladding, wood accents"
+        material: "premium facade materials -- exposed brick, natural stone cladding, wood accents"
       };
       var stilLabels = {
         contemporan: "contemporary European urban regeneration style",
@@ -593,7 +593,7 @@ CRITICAL: Keep perspective and angle exactly as is. Same aspect ratio. Same came
 
       window.isGenerating = true;
       this.disabled = true;
-      this.textContent = "Se generează...";
+      this.textContent = "Se genereaza...";
       var stopBtn = document.getElementById("btnStopGen");
       if (stopBtn) stopBtn.style.display = "block";
 
@@ -642,7 +642,7 @@ CRITICAL: Keep perspective and angle exactly as is. Same aspect ratio. Same came
         var candidate = data.candidates && data.candidates[0];
         if (!candidate) throw new Error("Cerere blocata");
         if (candidate.finishReason && candidate.finishReason !== "STOP" && candidate.finishReason !== "MAX_TOKENS")
-          throw new Error("Oprита: " + candidate.finishReason);
+          throw new Error("Oprita: " + candidate.finishReason);
         var parts = (candidate.content && candidate.content.parts) || [];
         var imgPart = null;
         for (var i=0; i<parts.length; i++) { if (parts[i].inlineData && parts[i].inlineData.mimeType && parts[i].inlineData.mimeType.indexOf("image/") === 0) { imgPart = parts[i]; break; } }
@@ -650,7 +650,7 @@ CRITICAL: Keep perspective and angle exactly as is. Same aspect ratio. Same came
 
         var genSrc = "data:" + imgPart.inlineData.mimeType + ";base64," + imgPart.inlineData.data;
         var origSrc = "data:" + imgMime + ";base64," + imgB64;
-        if (resultBox) resultBox.innerHTML = '<div class="slider-wrap"><img class="split-img-base" src="' + origSrc + '"><img class="split-img-gen" id="genImg" src="' + genSrc + '"><div class="split-divider" id="splitDivider"><div class="split-handle">⇔</div></div></div>';
+        if (resultBox) resultBox.innerHTML = '<div class="slider-wrap"><img class="split-img-base" src="' + origSrc + '"><img class="split-img-gen" id="genImg" src="' + genSrc + '"><div class="split-divider" id="splitDivider"><div class="split-handle"><-></div></div></div>';
         if (baLabels) baLabels.classList.add("visible");
 
         var fileName = "urban-regenerare-" + new Date().toISOString().slice(0,19).replace(/:/g,"-") + ".jpg";
@@ -687,7 +687,7 @@ CRITICAL: Keep perspective and angle exactly as is. Same aspect ratio. Same came
         clearInterval(interval);
         window.isGenerating = false;
         self.disabled = false;
-        self.textContent = "Generează din nou";
+        self.textContent = "Genereaza din nou";
         if (stopBtn) stopBtn.style.display = "none";
         var creds2 = {};
         try { creds2 = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(x) {}
