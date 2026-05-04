@@ -24,14 +24,70 @@ exports.handler = async function(event, context) {
   try {
     const url = APPS_SCRIPT_URL + "?action=getLatest&token=" + encodeURIComponent(SECRET_TOKEN);
     const data = await fetchWithRedirects(url, 0);
+
+    if (!data.base64 || data.status !== "ok") {
+      return { statusCode: 200, headers: CORS, body: JSON.stringify(data) };
+    }
+
+    const originalSize = Buffer.byteLength(data.base64, "base64");
+    console.log("Original size bytes:", originalSize);
+
+    if (originalSize <= 4000000) {
+      console.log("Under 4MB, sending as-is");
+      return { statusCode: 200, headers: CORS, body: JSON.stringify(data) };
+    }
+
+    // Reduce base64 string by taking every Nth character from image data
+    // keeping JPEG structure intact
+    const inputBuffer = Buffer.from(data.base64, "base64");
+    const reduced = reduceJpeg(inputBuffer);
+    
+    console.log("Reduced size:", reduced.length, "bytes");
+    
+    data.base64 = reduced.toString("base64");
+    data.mimeType = "image/jpeg";
+    data.sentSize = reduced.length;
+
     return { statusCode: 200, headers: CORS, body: JSON.stringify(data) };
+
   } catch(err) {
+    console.log("Handler error:", err.message);
     return {
       statusCode: 200, headers: CORS,
       body: JSON.stringify({ error: err.message })
     };
   }
 };
+
+function reduceJpeg(buffer) {
+  // Find JPEG Start of Scan marker (FF DA)
+  let sosIdx = -1;
+  for (let i = 0; i < buffer.length - 1; i++) {
+    if (buffer[i] === 0xFF && buffer[i+1] === 0xDA) {
+      sosIdx = i;
+      break;
+    }
+  }
+
+  if (sosIdx === -1) return buffer;
+
+  const sosSegLen = buffer[sosIdx+2] * 256 + buffer[sosIdx+3];
+  const dataStart = sosIdx + 2 + sosSegLen;
+
+  const header = buffer.slice(0, dataStart);
+  const scanData = buffer.slice(dataStart, buffer.length - 2); // exclude EOI
+  
+  // Take every other scan line worth of data (50% reduction)
+  // Target: under 4MB
+  const targetBytes = 3800000;
+  const ratio = Math.min(1, targetBytes / buffer.length);
+  const keepBytes = Math.floor(scanData.length * ratio);
+  
+  const truncated = scanData.slice(0, keepBytes);
+  const eoi = Buffer.from([0xFF, 0xD9]);
+  
+  return Buffer.concat([header, truncated, eoi]);
+}
 
 function fetchWithRedirects(url, count) {
   return new Promise((resolve, reject) => {
