@@ -234,7 +234,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
     <button class="btn-start-live" onclick="startLive()">Pornește monitoring</button>
   </div>
   <p class="drive-help">
-    Copiază URL-ul din Google Apps Script după deployment. 
+    Introdu Apps Script URL și Token în bara de jos, apoi apasă Pornește monitoring.
     <a href="#" onclick="showInstructions()">Cum configurez Apps Script? →</a>
   </p>
 </div>
@@ -324,12 +324,16 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
 <div class="api-footer">
   <div class="api-footer-label">API Key <span class="api-dot" id="apiDot"></span></div>
   <input type="password" class="api-key-input" id="apiKeyInput" placeholder="AIzaSy...">
-  <select class="model-sel-api" id="modelSelect" onchange="updateModelBadge()">
+  <select class="model-sel-api" id="modelSelect" onchange="updateModelBadge(); saveSettings();">
     <option value="gemini-2.5-flash-image">gemini-2.5-flash-image — Nano Banana</option>
     <option value="gemini-3.1-flash-image-preview">gemini-3.1-flash-image-preview — Nano Banana 2</option>
     <option value="gemini-3-pro-image-preview">gemini-3-pro-image-preview — Nano Banana Pro</option>
   </select>
   <span class="model-badge badge-ok" id="modelBadge">✓ Compatibil img2img</span>
+  <div class="api-footer-label" style="margin-left:16px;">Apps Script URL</div>
+  <input type="text" class="api-key-input" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="flex:0 0 320px;">
+  <div class="api-footer-label">Token</div>
+  <input type="password" class="api-key-input" id="scriptToken" placeholder="token-secret" style="flex:0 0 140px;">
 </div>
 
 <script>
@@ -423,10 +427,14 @@ function stopGeneration() {
 // ── PERSIST SETTINGS ──
 function saveSettings() {
   try {
-    localStorage.setItem("rdw_apikey", document.getElementById("apiKeyInput").value);
-    localStorage.setItem("rdw_model", document.getElementById("modelSelect").value);
-    localStorage.setItem("rdw_scripturl", document.getElementById("scriptUrl").value);
-    localStorage.setItem("rdw_token", document.getElementById("scriptToken").value);
+    const apiKey = document.getElementById("apiKeyInput").value;
+    const model = document.getElementById("modelSelect").value;
+    const scriptUrl = document.getElementById("scriptUrl") ? document.getElementById("scriptUrl").value : "";
+    const token = document.getElementById("scriptToken") ? document.getElementById("scriptToken").value : "";
+    if (apiKey) localStorage.setItem("rdw_apikey", apiKey);
+    if (model) localStorage.setItem("rdw_model", model);
+    if (scriptUrl) localStorage.setItem("rdw_scripturl", scriptUrl);
+    if (token) localStorage.setItem("rdw_token", token);
   } catch(e) {}
 }
 
@@ -640,7 +648,6 @@ document.querySelectorAll(".tag").forEach(tag => {
 document.getElementById("intensitate").addEventListener("input", function() {
   document.getElementById("intensitate-val").textContent = this.value;
 });
-document.getElementById("modelSelect").addEventListener("change", function() { updateModelBadge(); saveSettings(); });
 document.getElementById("scriptUrl").addEventListener("input", saveSettings);
 document.getElementById("scriptToken").addEventListener("input", saveSettings);
 
@@ -666,6 +673,7 @@ document.getElementById("btnGenerate").addEventListener("click", async function(
   const finalPrompt = buildFinalPrompt();
 
   isGenerating = true; this.disabled = true; this.textContent = "Se generează...";
+  document.getElementById("btnStop").style.display = "block";
 
   const resultBox = document.getElementById("resultBox");
   const errorBox = document.getElementById("errorBox");
