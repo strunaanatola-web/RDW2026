@@ -429,9 +429,7 @@ window.analyzeImage = function() {
   if (section) section.style.display = "block";
   if (spinner) spinner.style.display = "inline";
   var cleanKey = (creds.apiKey || "").replace(/[^ -~]/g, "").trim();
-  var prompt = "Analyze this urban/architectural photograph briefly in Romanian. Format:
-ANALIZA: [2 sentences about building style and condition]
-SUGESTIE PROMPT: [2-3 specific prompt additions for AI regeneration]";
+  var prompt = "Analyze this urban/architectural photograph briefly in Romanian. Format: ANALIZA: [2 sentences about building style and condition] SUGESTIE PROMPT: [2-3 specific prompt additions for AI regeneration]";
   fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": cleanKey },
