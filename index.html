@@ -112,6 +112,7 @@ body { font-family: 'Barlow', sans-serif; background: var(--paper); color: var(-
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rule); }
 .status-dot.ok { background: var(--green); }
 .status-dot.warn { background: #E8A020; }
+.status-dot.warn { background: #E8A020; }
 .status-item { display: flex; align-items: center; gap: 5px; }
 .status-label { letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; font-size: 9px; }
 .status-val { color: var(--ink); font-family: monospace; font-size: 10px; }
@@ -406,7 +407,10 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
       <span class="ba-lbl">◀ Original</span>
       <span class="ba-lbl">Generat ▶</span>
     </div>
-    <div class="dl-row"><button class="dl-btn" id="downloadBtn">Descarcă rezultatul</button></div>
+    <div class="dl-row" style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="dl-btn" id="downloadBtn">⬇ Descarcă</button>
+      <button class="dl-btn" id="driveBtn" style="display:none;border-color:#1a73e8;color:#1a73e8;" onclick="saveToDrive()">☁ Salvează Drive</button>
+    </div>
   </div>
 </div>
 
@@ -416,8 +420,20 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
     <span class="prompt-bar-label">Detalii suplimentare</span>
     <span class="prompt-bar-note">Ex: "păstrează culoarea roșie a fațadei", "adaugă balcoane cu flori"</span>
   </div>
+
+  <!-- AI ANALYSIS SECTION -->
+  <div id="analysisSection" style="display:none;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <span style="font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);">Analiză AI — Sugestie prompt</span>
+      <span id="analysisSpinner" style="display:none;font-size:10px;color:var(--muted);font-style:italic;">Se analizează imaginea...</span>
+      <button id="reanalyzeBtn" onclick="analyzeImage()" style="display:none;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;border:1px solid var(--rule);background:none;cursor:pointer;padding:3px 10px;color:var(--muted);font-family:Barlow,sans-serif;">Reanalyzează</button>
+    </div>
+    <div id="analysisSuggestion" style="background:#F0F7EB;border:1px solid #C8E0B4;border-radius:4px;padding:12px;font-size:11px;line-height:1.7;color:#2D5016;font-family:monospace;display:none;cursor:pointer;" onclick="applySuggestion()" title="Click pentru a aplica sugestia"></div>
+    <div id="analysisApplyHint" style="display:none;font-size:9px;color:var(--green);margin-top:4px;">↑ Click pe sugestie pentru a o aplica în câmpul de mai jos</div>
+  </div>
+
   <textarea class="prompt-visible" id="promptVisible" spellcheck="false" placeholder="Adaugă instrucțiuni specifice suplimentare..."></textarea>
-  <div class="prompt-hint">Promptul de bază se trimite automat. Câmpul de mai sus adaugă instrucțiuni personalizate.</div>
+  <div class="prompt-hint">Promptul de bază se trimite automat. Câmpul de mai sus adaugă instrucțiuni personalizate. <span id="autoSaveNote" style="color:var(--green);font-weight:500;display:none;">✓ Imaginea generată a fost descărcată automat.</span></div>
 </div>
 
 <script>
@@ -659,6 +675,8 @@ document.getElementById("fileInput").addEventListener("change", function(e) {
     document.getElementById("uploadHint").innerHTML =
       '<img src="' + dataUrl + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1A1A1A;">';
     updateBtn();
+    // Auto-analyze image with Gemini Vision
+    setTimeout(analyzeImage, 500);
   });
 });
 
@@ -755,6 +773,16 @@ document.getElementById("btnGenerate").addEventListener("click", async function(
     const data = await response.json();
     if (!response.ok) throw new Error(data.error?.message || "HTTP " + response.status);
 
+    // Check for overload error - retry automatically
+    if (data.error) {
+      const errCode = data.error.code;
+      const errMsg = data.error.message || "";
+      if (errCode === 503 || errMsg.includes("high demand") || errMsg.includes("overloaded") || errMsg.includes("UNAVAILABLE")) {
+        throw new Error("RETRY:" + errMsg);
+      }
+      throw new Error(errMsg || "HTTP " + response.status);
+    }
+
     const candidate = data.candidates?.[0];
     if (!candidate) throw new Error("Cerere blocată" + (data.promptFeedback?.blockReason ? ": " + data.promptFeedback.blockReason : ""));
     if (candidate.finishReason && !["STOP","MAX_TOKENS"].includes(candidate.finishReason))
@@ -778,11 +806,22 @@ document.getElementById("btnGenerate").addEventListener("click", async function(
       '</div>';
 
     baLabels.classList.add("visible");
+    const fileName = "urban-regenerare-" + new Date().toISOString().slice(0,19).replace(/:/g,"-") + ".jpg";
+    lastGeneratedSrc = genSrc;
+
+    // Auto-download immediately
+    autoDownload(genSrc, fileName);
+
+    // Show manual download button
     downloadBtn.style.display = "inline-block";
-    downloadBtn.onclick = () => {
-      const a = document.createElement("a");
-      a.href = genSrc; a.download = "urban-regenerare-" + Date.now() + ".png"; a.click();
-    };
+    downloadBtn.onclick = () => autoDownload(genSrc, fileName);
+
+    // Show Drive button
+    const driveBtn = document.getElementById("driveBtn");
+    if (driveBtn) {
+      driveBtn.style.display = "inline-block";
+    }
+
     initSplider();
 
     if (liveMode) {
@@ -799,11 +838,47 @@ document.getElementById("btnGenerate").addEventListener("click", async function(
   } catch(err) {
     clearTimeout(timeoutId);
     currentAbortController = null;
+
+    // Auto-retry for overloaded model
+    if (err.message && err.message.startsWith("RETRY:")) {
+      clearInterval(interval);
+      isGenerating = false;
+      this.disabled = false;
+      document.getElementById("btnStopGen").style.display = "none";
+
+      let countdown = 15;
+      errorBox.style.display = "block";
+      errorBox.style.borderColor = "#E8A020";
+      errorBox.style.color = "#856404";
+
+      const retryInterval = setInterval(() => {
+        if (!isGenerating) {
+          errorBox.textContent = "Model supraîncărcat. Reîncercare automată în " + countdown + "s... (sau apasă Generează acum)";
+        }
+        countdown--;
+        if (countdown < 0) {
+          clearInterval(retryInterval);
+          errorBox.style.display = "none";
+          errorBox.style.borderColor = "";
+          errorBox.style.color = "";
+          if (!isGenerating) {
+            document.getElementById("btnGenerate").click();
+          }
+        }
+      }, 1000);
+
+      document.getElementById("loadingText") && (document.getElementById("loadingText").textContent = "Model supraîncărcat...");
+      updateBtn();
+      return;
+    }
+
     const errMsg = err.name === "AbortError"
       ? "Timeout sau oprit manual. Încearcă din nou."
       : err.message;
     resultBox.innerHTML = '<div class="result-placeholder"><div class="result-icon" style="color:#CC1B1B">!</div><div class="result-hint" style="color:#CC1B1B">Eroare</div></div>';
     errorBox.style.display = "block";
+    errorBox.style.borderColor = "";
+    errorBox.style.color = "";
     errorBox.textContent = errMsg;
   } finally {
     clearInterval(interval);
@@ -943,6 +1018,8 @@ function _finishLoadLive(dataUrl, fileName) {
   document.getElementById("baLabels").classList.remove("visible");
   document.getElementById("downloadBtn").style.display = "none";
   updateBtn();
+  // Auto-analyze live image
+  setTimeout(analyzeImage, 500);
 }
 
 // Show cleaned key preview as user types
@@ -960,6 +1037,194 @@ document.getElementById("setupApiKey").addEventListener("input", function() {
   }
 });
 
+// ═══════════════════════════════════════
+// IMAGE ANALYSIS — Gemini Vision
+// ═══════════════════════════════════════
+let lastAnalyzedB64 = null;
+
+async function analyzeImage() {
+  const creds = getCredentials();
+  if (!uploadedImageB64 || !creds || !creds.apiKey) return;
+  if (uploadedImageB64 === lastAnalyzedB64) return; // already analyzed
+
+  lastAnalyzedB64 = uploadedImageB64;
+
+  const section = document.getElementById("analysisSection");
+  const spinner = document.getElementById("analysisSpinner");
+  const suggestion = document.getElementById("analysisSuggestion");
+  const hint = document.getElementById("analysisApplyHint");
+  const reBtn = document.getElementById("reanalyzeBtn");
+
+  section.style.display = "block";
+  spinner.style.display = "inline";
+  suggestion.style.display = "none";
+  hint.style.display = "none";
+  reBtn.style.display = "none";
+
+  const analysisPrompt = `You are an expert urban architect analyzing a photograph for regeneration potential.
+
+Analyze this urban photograph and provide a CONCISE architectural analysis in Romanian, followed by specific prompt suggestions for AI image generation.
+
+Respond in this exact format:
+ANALIZA: [2-3 sentences describing the building/space: architectural style, current condition, key features]
+SUGESTIE PROMPT: [2-3 specific, actionable prompt additions that would improve the regeneration result — focus on materials, architectural details, colors, specific interventions relevant to what you see]
+
+Be specific to what you actually see in the image. Keep total response under 150 words.`;
+
+  try {
+    const cleanKey = creds.apiKey.replace(/[^ -~]/g, "").trim();
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": cleanKey },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: analysisPrompt },
+              { inline_data: { mime_type: uploadedMimeType, data: uploadedImageB64 } }
+            ]
+          }],
+          generationConfig: { maxOutputTokens: 300, temperature: 0.4 }
+        })
+      }
+    );
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    if (text) {
+      // Extract SUGESTIE PROMPT part for the suggestion box
+      const sugestieMatch = text.match(/SUGESTIE PROMPT:\s*(.+)/s);
+      const analizaMatch = text.match(/ANALIZA:\s*(.+?)(?=SUGESTIE PROMPT:|$)/s);
+
+      let displayText = "";
+      if (analizaMatch) displayText += "📍 " + analizaMatch[1].trim() + "
+
+";
+      if (sugestieMatch) displayText += "💡 Sugestie: " + sugestieMatch[1].trim();
+      if (!displayText) displayText = text;
+
+      suggestion.textContent = displayText;
+      suggestion.style.display = "block";
+      hint.style.display = "block";
+
+      // Store just the prompt suggestion for apply
+      suggestion.dataset.promptSuggestion = sugestieMatch
+        ? sugestieMatch[1].trim()
+        : text;
+    }
+  } catch(err) {
+    console.log("Analysis error:", err.message);
+    document.getElementById("analysisSection").style.display = "none";
+  } finally {
+    spinner.style.display = "none";
+    reBtn.style.display = "inline";
+  }
+}
+
+function applySuggestion() {
+  const suggestion = document.getElementById("analysisSuggestion");
+  const promptField = document.getElementById("promptVisible");
+  const promptText = suggestion.dataset.promptSuggestion || suggestion.textContent;
+  if (promptText) {
+    promptField.value = promptText;
+    promptField.style.borderColor = "var(--green)";
+    setTimeout(() => { promptField.style.borderColor = ""; }, 2000);
+    promptField.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+// ═══════════════════════════════════════
+// AUTO SAVE — Download + Google Drive
+// ═══════════════════════════════════════
+let lastGeneratedSrc = null;
+let driveAccessToken = null;
+
+function autoDownload(genSrc, fileName) {
+  // Auto-download to PC
+  const a = document.createElement("a");
+  a.href = genSrc;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  document.getElementById("autoSaveNote").style.display = "inline";
+  setTimeout(() => {
+    document.getElementById("autoSaveNote").style.display = "none";
+  }, 4000);
+}
+
+function initGoogleDriveAuth() {
+  // Load Google Identity Services
+  if (document.getElementById("gsiScript")) return;
+  const script = document.createElement("script");
+  script.id = "gsiScript";
+  script.src = "https://accounts.google.com/gsi/client";
+  script.async = true;
+  document.head.appendChild(script);
+}
+
+function authenticateAndSaveDrive() {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: "GOOGLE_CLIENT_ID_HERE",
+    scope: "https://www.googleapis.com/auth/drive.file",
+    callback: function(response) {
+      if (response.access_token) {
+        driveAccessToken = response.access_token;
+        saveToDrive();
+      }
+    }
+  });
+  client.requestAccessToken();
+}
+
+async function saveToDrive() {
+  if (!lastGeneratedSrc) return;
+
+  if (!driveAccessToken) {
+    // Need Google Client ID - show info
+    const note = confirm(
+      "Pentru salvarea pe Google Drive ai nevoie de un Google OAuth Client ID.\n\n" +
+      "Momentan imaginea se descarcă local.\n\n" +
+      "Vrei să descarci acum?"
+    );
+    if (note) autoDownload(lastGeneratedSrc, "urban-regenerare-" + Date.now() + ".jpg");
+    return;
+  }
+
+  try {
+    // Convert base64 to blob
+    const base64 = lastGeneratedSrc.split(",")[1];
+    const byteArr = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const blob = new Blob([byteArr], { type: "image/jpeg" });
+
+    const fileName = "urban-regenerare-" + new Date().toISOString().slice(0,19).replace(/:/g,"-") + ".jpg";
+
+    // Create file in Drive
+    const metadata = { name: fileName, mimeType: "image/jpeg" };
+    const form = new FormData();
+    form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+    form.append("file", blob);
+
+    const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + driveAccessToken },
+      body: form
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      alert("✓ Salvat pe Google Drive: " + fileName);
+    } else {
+      throw new Error("Drive error: " + res.status);
+    }
+  } catch(err) {
+    console.log("Drive save error:", err);
+    autoDownload(lastGeneratedSrc, "urban-regenerare-" + Date.now() + ".jpg");
+  }
+}
+
 // ── INIT ──
 (function init() {
   const creds = getCredentials();
@@ -974,6 +1239,9 @@ document.getElementById("setupApiKey").addEventListener("input", function() {
     document.getElementById("setupScriptUrl").value = creds.scriptUrl || "";
     document.getElementById("setupToken").value = creds.token || "";
   }
+
+  // Init Google Drive auth (loads GSI script)
+  initGoogleDriveAuth();
 })();
 </script>
 </body>
