@@ -600,24 +600,53 @@ document.getElementById("intensitate").addEventListener("input", function() {
   document.getElementById("intensitate-val").textContent = this.value;
 });
 
+// ── IMAGE COMPRESSION ──
+// Compresses image to max 1200px longest side, JPEG quality 85
+// Reduces file size significantly before sending to Gemini API
+function compressImage(file, callback) {
+  const MAX_PX = 1200;
+  const QUALITY = 0.85;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const img = new Image();
+    img.onload = function() {
+      let w = img.width, h = img.height;
+      // Scale down if needed
+      if (w > MAX_PX || h > MAX_PX) {
+        if (w > h) { h = Math.round(h * MAX_PX / w); w = MAX_PX; }
+        else { w = Math.round(w * MAX_PX / h); h = MAX_PX; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL("image/jpeg", QUALITY);
+      const b64 = compressed.split(",")[1];
+      console.log("Original size:", Math.round(file.size/1024) + "KB",
+                  "Compressed:", Math.round(b64.length * 0.75 / 1024) + "KB",
+                  "Dimensions:", w + "x" + h);
+      callback(compressed, b64, "image/jpeg");
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 // ── FILE UPLOAD ──
 function handleUploadClick() {
   if (!liveMode) document.getElementById("fileInput").click();
 }
 document.getElementById("fileInput").addEventListener("change", function(e) {
   const file = e.target.files[0]; if (!file) return;
-  uploadedMimeType = file.type || "image/jpeg";
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    const dataUrl = ev.target.result;
-    uploadedImageB64 = dataUrl.split(",")[1];
+  compressImage(file, function(dataUrl, b64, mimeType) {
+    uploadedImageB64 = b64;
+    uploadedMimeType = mimeType;
     const zone = document.getElementById("uploadZone");
     zone.classList.add("has-image");
     document.getElementById("uploadHint").innerHTML =
       '<img src="' + dataUrl + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1A1A1A;">';
     updateBtn();
-  };
-  reader.readAsDataURL(file);
+  });
 });
 
 // ── STOP GENERATION ──
@@ -866,9 +895,28 @@ async function pollForNewPhoto(url, token) {
 }
 
 function loadImageFromLive(base64, mimeType, fileName) {
-  uploadedImageB64 = base64;
-  uploadedMimeType = mimeType;
-  const dataUrl = "data:" + mimeType + ";base64," + base64;
+  // Compress live image too before storing
+  const dataUrlRaw = "data:" + mimeType + ";base64," + base64;
+  const img = new Image();
+  img.onload = function() {
+    const MAX_PX = 1200;
+    let w = img.width, h = img.height;
+    if (w > MAX_PX || h > MAX_PX) {
+      if (w > h) { h = Math.round(h * MAX_PX / w); w = MAX_PX; }
+      else { w = Math.round(w * MAX_PX / h); h = MAX_PX; }
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    const compressed = canvas.toDataURL("image/jpeg", 0.85);
+    uploadedImageB64 = compressed.split(",")[1];
+    uploadedMimeType = "image/jpeg";
+    _finishLoadLive(compressed, fileName);
+  };
+  img.src = dataUrlRaw;
+}
+
+function _finishLoadLive(dataUrl, fileName) {
   const zone = document.getElementById("uploadZone");
   zone.classList.add("has-image", "new-image");
   document.getElementById("uploadHint").innerHTML =
