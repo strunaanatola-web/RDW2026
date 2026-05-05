@@ -1,7 +1,7 @@
 const https = require("https");
 const http = require("http");
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwf0L0OhlOLrvokZYsOzQwF4FhTS8fO799cCnQ__vqSBVJHITlfpro1KmE1CkTbFEyT/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzQo-07z9g-EyZFWX4fDwBi7NLabF9CVQ6VYUwepJnD0A772NK2shA4vclVae5W7etm/exec";
 const SECRET_TOKEN = "opm-RDW-2026";
 
 const CORS = {
