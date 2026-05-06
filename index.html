@@ -579,7 +579,7 @@ window.saveToDrive = function() {
 
 window._uploadToDrive = function(token) {
   if (!window._lastGenSrc) return;
-  var FOLDER_NAME = "Urban Regenerare - RDW";
+  var FOLDER_NAME = "Urban Regenerare RDW";
 
   // Step 1: find or create folder
   fetch("https://www.googleapis.com/drive/v3/files?q=" +
@@ -700,7 +700,9 @@ document.addEventListener("DOMContentLoaded", function() {
           var btn = document.getElementById("btnGenerate");
           var creds = {};
           try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(x) {}
-          if (btn) btn.disabled = !(creds.apiKey && creds.apiKey.length > 10);
+          var eng0 = creds.engine || "gemini";
+          var ak0 = eng0 === "fal" ? (creds.falKey || "") : (creds.apiKey || "");
+          if (btn) btn.disabled = !(ak0 && ak0.length > 10);
           // Auto-analyze
           setTimeout(window.analyzeImage, 600);
         };
@@ -960,7 +962,9 @@ document.addEventListener("DOMContentLoaded", function() {
             if (resultBox) resultBox.innerHTML = '<div class="result-placeholder"><div class="result-icon">-></div><div class="result-hint">Rezultatul va aparea aici</div></div>';
             if (baLabels) baLabels.classList.remove("visible");
             if (dlBtn) dlBtn.style.display = "none";
-            self.disabled = !(window._uploadedImageB64 && creds.apiKey);
+            var eng1 = creds.engine || "gemini";
+            var ak1 = eng1 === "fal" ? (creds.falKey || "") : (creds.apiKey || "");
+            self.disabled = !(window._uploadedImageB64 && ak1);
           }, 30000);
         }
       })
@@ -979,7 +983,9 @@ document.addEventListener("DOMContentLoaded", function() {
         if (stopBtn) stopBtn.style.display = "none";
         var creds2 = {};
         try { creds2 = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(x) {}
-        self.disabled = !(window._uploadedImageB64 && creds2.apiKey);
+        var eng2 = creds2.engine || "gemini";
+        var activeKey2 = eng2 === "fal" ? (creds2.falKey || "") : (creds2.apiKey || "");
+        self.disabled = !(window._uploadedImageB64 && activeKey2);
       });
     });
   }
@@ -1432,7 +1438,9 @@ function buildFinalPrompt() {
 function updateBtn() {
   const creds = getCredentials();
   const btn = document.getElementById("btnGenerate");
-  btn.disabled = !(uploadedImageB64 && creds && creds.apiKey) || isGenerating;
+  var engU = (creds && creds.engine) || "gemini";
+  var akU = engU === "fal" ? (creds && creds.falKey || "") : (creds && creds.apiKey || "");
+  btn.disabled = !(uploadedImageB64 && akU) || isGenerating;
 }
 
 function getEffectiveModel() {
@@ -1883,9 +1891,9 @@ async function saveToDrive() {
 
     const fileName = "urban-regenerare-" + new Date().toISOString().slice(0,19).replace(/:/g,"-") + ".jpg";
 
-    // Create file in Drive folder "Urban Regenerare"
+    // Create file in Drive folder "Urban Regenerare RDW"
     // Note: folder is auto-created if it doesn't exist
-    const folderId = await getOrCreateDriveFolder("Urban Regenerare — RDW");
+    const folderId = await getOrCreateDriveFolder("Urban Regenerare RDW");
     const metadata = {
       name: fileName,
       mimeType: "image/jpeg",
