@@ -245,43 +245,57 @@ var STORAGE_KEY = "rdw_creds_v1";
 
 window.saveCredentials = function() {
   try {
-    var apiKey = (document.getElementById("setupApiKey").value || "").replace(/[^\x20-\x7E]/g, "").trim();
-    var model = (document.getElementById("setupModel") || {}).value || "gemini-2.5-flash-image";
-    var scriptUrl = ((document.getElementById("setupScriptUrl") || {}).value || "").trim();
-    var token = ((document.getElementById("setupToken") || {}).value || "").trim();
+    var engineEl = document.getElementById("setupEngine");
+    var apiKeyEl = document.getElementById("setupApiKey");
+    var falKeyEl = document.getElementById("setupFalKey");
+    var modelEl = document.getElementById("setupModel");
+    var falModelEl = document.getElementById("setupFalModel");
+    var scriptUrlEl = document.getElementById("setupScriptUrl");
+    var tokenEl = document.getElementById("setupToken");
 
-    if (apiKey.length < 10) {
+    var engine = engineEl ? engineEl.value : "gemini";
+    var apiKey = (apiKeyEl ? apiKeyEl.value : "").replace(/[^ -~]/g, "").trim();
+    var falKey = (falKeyEl ? falKeyEl.value : "").replace(/[^ -~]/g, "").trim();
+    var model = modelEl ? modelEl.value : "gemini-2.5-flash-image";
+    var falModel = falModelEl ? falModelEl.value : "fal-ai/flux-pro/v1.1";
+    var scriptUrl = (scriptUrlEl ? scriptUrlEl.value : "").trim();
+    var token = (tokenEl ? tokenEl.value : "").trim();
+
+    var activeKey = engine === "fal" ? falKey : apiKey;
+    if (!activeKey || activeKey.length < 10) {
       var err = document.getElementById("modalError");
-      if (err) { err.textContent = "API Key invalid (minim 10 caractere)."; err.style.display = "block"; }
+      if (err) { err.textContent = (engine === "fal" ? "fal.ai" : "Gemini") + " API Key invalid (minim 10 caractere)."; err.style.display = "block"; }
       return;
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey: apiKey, model: model, scriptUrl: scriptUrl, token: token }));
-    
+    var creds = { engine: engine, apiKey: apiKey, falKey: falKey, model: model, falModel: falModel, scriptUrl: scriptUrl, token: token, savedAt: Date.now() };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(creds));
+
     var overlay = document.getElementById("modalOverlay");
     if (overlay) overlay.style.display = "none";
-    
-    // Apply credentials immediately without reload
-    var apiStatusDot = document.getElementById("apiStatusDot");
-    var apiStatusVal = document.getElementById("apiStatusVal");
-    var modelStatusDot = document.getElementById("modelStatusDot");
-    var modelStatusVal = document.getElementById("modelStatusVal");
-    var liveStatusDot = document.getElementById("liveStatusDot");
-    var liveStatusVal = document.getElementById("liveStatusVal");
 
-    if (apiStatusDot) apiStatusDot.className = "status-dot ok";
-    if (apiStatusVal) apiStatusVal.textContent = apiKey.slice(0,6) + "..." + apiKey.slice(-4);
-    if (modelStatusDot) modelStatusDot.className = "status-dot ok";
-    if (modelStatusVal) modelStatusVal.textContent = model.replace("gemini-","").replace("-preview","");
-    if (liveStatusDot) liveStatusDot.className = scriptUrl ? "status-dot ok" : "status-dot warn";
-    if (liveStatusVal) liveStatusVal.textContent = scriptUrl ? "configurat" : "neconfigurat";
-
-    // Call main applyCredentials if available
     if (typeof applyCredentials === "function") {
-      applyCredentials({ apiKey: apiKey, model: model, scriptUrl: scriptUrl, token: token });
+      applyCredentials(creds);
+    } else {
+      // Apply status bar directly
+      var activeKeyMasked = activeKey.slice(0,6) + "..." + activeKey.slice(-4);
+      var engineLabel = engine === "fal" ? "fal.ai " : "Gemini ";
+      var modelLabel = engine === "fal" ? (falModel || "flux").replace("fal-ai/","") : (model || "").replace("gemini-","").replace("-preview","");
+      var dot = document.getElementById("apiStatusDot");
+      var val = document.getElementById("apiStatusVal");
+      var mdot = document.getElementById("modelStatusDot");
+      var mval = document.getElementById("modelStatusVal");
+      if (dot) dot.className = "status-dot ok";
+      if (val) val.textContent = engineLabel + activeKeyMasked;
+      if (mdot) mdot.className = "status-dot ok";
+      if (mval) mval.textContent = modelLabel;
+      var lsDot = document.getElementById("liveStatusDot");
+      var lsVal = document.getElementById("liveStatusVal");
+      if (lsDot) lsDot.className = scriptUrl ? "status-dot ok" : "status-dot warn";
+      if (lsVal) lsVal.textContent = scriptUrl ? "configurat" : "neconfigurat";
     }
   } catch(e) {
-    alert("Eroare: " + e.message);
+    alert("Eroare la salvare: " + e.message);
   }
 };
 
@@ -671,36 +685,29 @@ document.addEventListener("DOMContentLoaded", function() {
   // FAL.AI GENERATION
   // ═══════════════════════════════════════════
   window._generateWithFal = function(falKey, falModel, imgB64, imgMime, prompt, ctrl) {
+    var genModel = (falModel === "fal-ai/flux-pro/v1.1" || falModel === "fal-ai/flux-pro")
+      ? "fal-ai/flux-pro/v1/redux"
+      : "fal-ai/flux/dev/image-to-image";
     return new Promise(function(resolve, reject) {
-      // Step 1: Upload image to fal storage
-      var imageDataUrl = "data:" + imgMime + ";base64," + imgB64;
       var byteArr = Uint8Array.from(atob(imgB64), function(c) { return c.charCodeAt(0); });
       var blob = new Blob([byteArr], { type: imgMime });
 
-      fetch("https://rest.alpha.fal.ai/storage/upload/initiate", {
+      // Step 1: Upload image to fal.ai storage
+      fetch("https://fal.run/fal-ai/storage/upload", {
         method: "POST",
         signal: ctrl.signal,
-        headers: {
-          "Authorization": "Key " + falKey,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ content_type: imgMime, file_name: "image.jpg" })
+        headers: { "Authorization": "Key " + falKey },
+        body: blob
       })
-      .then(function(r) { return r.json(); })
-      .then(function(initData) {
-        if (!initData.upload_url) throw new Error("fal.ai upload init failed: " + JSON.stringify(initData));
-        // Step 2: Upload to presigned URL
-        return fetch(initData.upload_url, {
-          method: "PUT",
-          signal: ctrl.signal,
-          headers: { "Content-Type": imgMime },
-          body: blob
-        }).then(function() { return initData.file_url || initData.access_url; });
+      .then(function(r) {
+        if (!r.ok) throw new Error("fal.ai upload failed: HTTP " + r.status);
+        return r.json();
       })
-      .then(function(imageUrl) {
-        if (!imageUrl) throw new Error("fal.ai upload failed - no URL returned");
-        // Step 3: Generate with FLUX img2img
-        return fetch("https://queue.fal.run/" + falModel, {
+      .then(function(uploadData) {
+        var imageUrl = uploadData.url || uploadData.access_url || uploadData.file_url;
+        if (!imageUrl) throw new Error("fal.ai upload: no URL in response: " + JSON.stringify(uploadData).slice(0,200));
+        // Step 2: Generate with FLUX img2img
+        return fetch("https://fal.run/" + genModel, {
           method: "POST",
           signal: ctrl.signal,
           headers: {
@@ -710,11 +717,12 @@ document.addEventListener("DOMContentLoaded", function() {
           body: JSON.stringify({
             image_url: imageUrl,
             prompt: prompt,
-            strength: 0.75,
+            strength: 0.80,
             num_inference_steps: 28,
             guidance_scale: 3.5,
             num_images: 1,
-            output_format: "jpeg"
+            output_format: "jpeg",
+            enable_safety_checker: false
           })
         });
       })
@@ -726,7 +734,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         if (!queueData.request_id) throw new Error("fal.ai queue error: " + JSON.stringify(queueData).slice(0,200));
         // Poll queue
-        return window._pollFalQueue(falKey, falModel, queueData.request_id, ctrl);
+        return window._pollFalQueue(falKey, genModel, queueData.request_id, ctrl);
       })
       .then(function(imageUrl) {
         // Download generated image and convert to base64
@@ -750,13 +758,13 @@ document.addEventListener("DOMContentLoaded", function() {
       var maxAttempts = 60; // 5 minutes max
       function poll() {
         if (attempts++ > maxAttempts) { reject(new Error("fal.ai timeout")); return; }
-        fetch("https://queue.fal.run/" + falModel + "/requests/" + requestId + "/status", {
+        fetch("https://fal.run/" + genModel + "/requests/" + requestId + "/status", {
           headers: { "Authorization": "Key " + falKey }
         })
         .then(function(r) { return r.json(); })
         .then(function(status) {
           if (status.status === "COMPLETED") {
-            return fetch("https://queue.fal.run/" + falModel + "/requests/" + requestId, {
+            return fetch("https://fal.run/" + genModel + "/requests/" + requestId, {
               headers: { "Authorization": "Key " + falKey }
             })
             .then(function(r) { return r.json(); })
