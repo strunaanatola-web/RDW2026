@@ -898,8 +898,9 @@ function archOpen(){
   var o=document.getElementById('archOv'),b=document.getElementById('archBd');
   if(!o||!b)return;
   o.style.display='flex';
-  if(_aHtml){b.innerHTML=_aHtml;return;}
-  if(_aLoad){b.innerHTML='<div class="arch-sp"><div></div><div>Analizez...</div></div>';b.dataset.w='1';return;}
+  if(_aB64&&_aB64!==window._uploadedImageB64){_aB64=null;_aHtml=null;_aLoad=false;}
+  if(_aHtml&&_aB64===window._uploadedImageB64){b.innerHTML=_aHtml;return;}
+  if(_aLoad&&_aB64===window._uploadedImageB64){b.innerHTML='<div class="arch-sp"><div></div><div>Analizez...</div></div>';b.dataset.w='1';return;}
   b.innerHTML='<div class="arch-sp"><div></div><div>Analizez...</div></div>';
   b.dataset.w='1';
   archFetch();
@@ -925,7 +926,7 @@ function archFetch(){
   doArchFetch(k);
 }
 function doArchFetch(k){
-  var prompt='Esti un critic de arhitectura si urbanist cu cunostinte profunde despre arhitectura romaneasca si europeana. Analizeaza aceasta fotografie si incearca sa identifici cladirea, zona sau tipul de spatiu urban. Scrie un text curgator in romana, 250-350 de cuvinte, fara titluri sau sectiuni, cu voce proprie si subtila ironie. Include: ce vezi efectiv in imagine (elemente arhitecturale specifice, materiale, detalii constructive), contextul istoric si stilistic (perioada, influente, comparatii cu arhitectura europeana similara), tensiunea dintre valoarea arhitecturala originala si starea sau utilizarea actuala, potentialul de regenerare. Daca recunosti cladirea sau zona, mentioneaz-o. Scrie ca si cum ai ghida pe cineva interesat de arhitectura, nu ca un raport tehnic.';
+  var prompt='Esti un critic de arhitectura si urbanist cu cunostinte profunde despre arhitectura romaneasca si europeana. Analizeaza aceasta fotografie si incearca sa identifici cladirea, zona sau tipul de spatiu urban.\n\nScrie analiza in romana, cu voce proprie, subtila ironie si pasiune pentru arhitectura. Structureaza elegant in trei paragrafe distincte, fiecare cu un titlu scurt pe rand separat:\n\nSTIL, MATERIALITATE SI TEHNICA\n[Un paragraf despre ce vezi: stilul arhitectural, perioada, materialele folosite, detalii constructive specifice, comparatii cu arhitectura europeana similara. Daca recunosti cladirea, mentioneaz-o.]\n\nCONTEXT ISTORIC\n[Un paragraf despre istoria cladirii sau tipului de spatiu, contextul urban si social al epocii, ce reprezenta la momentul constructiei.]\n\nSTAREA ACTUALA SI POTENTIALUL\n[Un paragraf despre tensiunea dintre valoarea arhitecturala originala si utilizarea actuala, cu o nota despre potentialul de regenerare - cu ironie si luciditate.]\n\nMaxim 350 de cuvinte total. Fii specific la ce vezi in imagine, nu generic.';
   fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-goog-api-key':k},
@@ -1006,7 +1007,7 @@ function doArchFetch(k){
 <!-- MODE TABS + LIVE BANNER inline -->
 <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--rule);">
   <div class="mode-tabs">
-    <div class="mode-tab active" id="tabManual" onclick="switchMode('manual')">Upload manual</div>
+    <div class="mode-tab active" id="tabManual" onclick="switchMode('manual')">Încarcă imagine</div>
     <div class="mode-tab" id="tabLive" onclick="toggleLiveMode()">
       <span class="live-dot" id="liveDot"></span>
       Live Event
@@ -1414,6 +1415,7 @@ document.getElementById("fileInput").addEventListener("change", function(e) {
     document.getElementById("uploadHint").innerHTML =
       '<img src="' + dataUrl + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1A1A1A;">';
     updateBtn();
+    _aB64=null;_aHtml=null;_aLoad=false;
     archShow();
     setTimeout(archPreload,1000);
     // Auto-analyze
