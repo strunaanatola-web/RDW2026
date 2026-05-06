@@ -472,7 +472,8 @@ window.analyzeImage = function() {
   if (spinner) spinner.style.display = "inline";
   var cleanKey = (creds.apiKey || "").replace(/[^ -~]/g, "").trim();
   var prompt = "You are an expert urban regeneration architect and AI image generation specialist. Analyze this photograph and generate a detailed, professional image generation prompt for urban transformation.\n\nRespond ONLY in this exact format:\n\nANALIZA: [2-3 sentences in Romanian describing: building type, architectural style, current materials, condition, key elements visible]\n\nPROMPT GENERARE: [Write a detailed English prompt for AI image generation, similar to professional Midjourney/Stable Diffusion prompts. Include: photorealistic style, specific materials to use (marble, glass, wood, steel etc), lighting description, what to keep from original, what to transform, colors, textures, atmosphere. Minimum 80 words. Be very specific about architectural details visible in the image.]";
-  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent", {
+  console.log("Using key:", cleanKey ? cleanKey.slice(0,8)+"..." : "EMPTY", "length:", cleanKey.length);
+  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": cleanKey },
     body: JSON.stringify({
@@ -904,7 +905,7 @@ function archFetch(){
 }
 function doArchFetch(k){
   var prompt='Esti un critic de arhitectura. Analizeaza aceasta fotografie si scrie un text curgator in romana, 200-300 cuvinte, fara titluri sau liste, cu voce proprie: stil arhitectural, perioada, detalii tehnice interesante, stare actuala, potential.';
-  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent',{
+  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-goog-api-key':k},
     body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:window._uploadedMimeType||'image/jpeg',data:window._uploadedImageB64}}]}],generationConfig:{maxOutputTokens:800,temperature:0.7}})
