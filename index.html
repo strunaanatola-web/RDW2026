@@ -436,7 +436,7 @@ window._loadLiveImage = function(base64, mimeType) {
     if (banner) { banner.classList.add("visible"); setTimeout(function(){ banner.classList.remove("visible"); }, 4000); }
     var btn = document.getElementById("btnGenerate");
     if (btn) btn.disabled = false;
-    setTimeout(window.analyzeImage, 800);
+    setTimeout(function() { window._lastAnalyzedB64 = null; window.analyzeImage(); }, 800);
   }
 
   img.onload = function() {
@@ -474,65 +474,79 @@ window.stopGeneration = function() {
   if (hint) hint.innerHTML = '<div class="upload-cross"></div><div class="upload-hint">Click pentru a incarca</div><div class="upload-hint" style="font-size:9px;opacity:0.6">JPG . PNG</div>';
 };
 
-window.analyzeImage = function() {
+window.analyzeImage = function(force) {
   var creds = {};
   try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
-  // Always use Gemini for analysis regardless of generation engine
-  var geminiKey = (creds.apiKey || "").replace(/[^ -~]/g, "").trim();
+
   if (!window._uploadedImageB64) return;
+
+  // Prevent duplicate analysis of same image (unless forced)
+  if (!force && window._lastAnalyzedB64 === window._uploadedImageB64) return;
+
+  var geminiKey = (creds.apiKey || "").replace(/[^ -~]/g, "").trim();
   var section = document.getElementById("analysisSection");
+  var spinner = document.getElementById("analysisSpinner");
+  var suggEl = document.getElementById("analysisSuggestion");
+  var hintEl = document.getElementById("analysisApplyHint");
   var reBtn = document.getElementById("reanalyzeBtn");
+
+  if (section) section.style.display = "block";
+
   if (!geminiKey) {
-    if (section) section.style.display = "block";
-    var suggEl2 = document.getElementById("analysisSuggestion");
-    if (suggEl2) {
-      suggEl2.textContent = "Adauga un API Key Google Gemini in Setari pentru a activa analiza AI (necesar chiar si cu fal.ai).";
-      suggEl2.style.display = "block";
+    if (spinner) spinner.style.display = "none";
+    if (suggEl) {
+      suggEl.textContent = "Adauga API Key Google Gemini in Setari pentru analiza AI (necesar si cu fal.ai).";
+      suggEl.style.display = "block";
     }
     if (reBtn) reBtn.style.display = "inline";
     return;
   }
-  var section = document.getElementById("analysisSection");
-  var spinner = document.getElementById("analysisSpinner");
-  if (section) section.style.display = "block";
+
+  window._lastAnalyzedB64 = window._uploadedImageB64;
+
   if (spinner) spinner.style.display = "inline";
-  var cleanKey = geminiKey;
-  var prompt = "You are an expert urban regeneration architect and AI image generation specialist. Analyze this photograph and generate a detailed, professional image generation prompt for urban transformation.\n\nRespond ONLY in this exact format:\n\nANALIZA: [2-3 sentences in Romanian describing: building type, architectural style, current materials, condition, key elements visible]\n\nPROMPT GENERARE: [Write a detailed English prompt for AI image generation, similar to professional Midjourney/Stable Diffusion prompts. Include: photorealistic style, specific materials to use (marble, glass, wood, steel etc), lighting description, what to keep from original, what to transform, colors, textures, atmosphere. Minimum 80 words. Be very specific about architectural details visible in the image.]";
+  if (suggEl) suggEl.style.display = "none";
+  if (hintEl) hintEl.style.display = "none";
+  if (reBtn) reBtn.style.display = "none";
+
+  var analysisPrompt = "You are an expert urban regeneration architect and AI image generation specialist. Analyze this photograph and generate a detailed, professional image generation prompt for urban transformation.\n\nRespond ONLY in this exact format:\n\nANALIZA: [2-3 sentences in Romanian describing: building type, architectural style, current materials, condition, key elements visible]\n\nPROMPT GENERARE: [Write a detailed English prompt for AI image generation, similar to professional Midjourney/Stable Diffusion prompts. Include: photorealistic style, specific materials to use (marble, glass, wood, steel etc), lighting description, what to keep from original, what to transform, colors, textures, atmosphere. Minimum 80 words. Be very specific about architectural details visible in the image.]";
+
   fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": cleanKey },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: window._uploadedMimeType || "image/jpeg", data: window._uploadedImageB64 } }] }],
+      contents: [{ parts: [
+        { text: analysisPrompt },
+        { inline_data: { mime_type: window._uploadedMimeType || "image/jpeg", data: window._uploadedImageB64 } }
+      ]}],
       generationConfig: { maxOutputTokens: 2048, temperature: 0.3 }
     })
-  }).then(function(r) { return r.json(); })
-    .then(function(data) {
-      var text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) ? data.candidates[0].content.parts[0].text : "";
-      var suggEl = document.getElementById("analysisSuggestion");
-      var hintEl = document.getElementById("analysisApplyHint");
-      if (spinner) spinner.style.display = "none";
-      console.log("AI Analysis response:", text);
-      if (text && suggEl) {
-        // Display full text with formatting
-        suggEl.textContent = text;
-        suggEl.style.display = "block";
-        // Extract PROMPT GENERARE section for apply button
-        var promptMatch = text.match(/PROMPT GENERARE:\s*([\s\S]+)$/);
-        var sugestieMatch = text.match(/SUGESTIE PROMPT:\s*([\s\S]+?)(?=PROMPT GENERARE:|$)/);
-        var extracted = "";
-        if (promptMatch) extracted = promptMatch[1].trim();
-        else if (sugestieMatch) extracted = sugestieMatch[1].trim();
-        else extracted = text;
-        suggEl.dataset.promptSuggestion = extracted;
-        if (hintEl) hintEl.style.display = "block";
-      }
-      var reBtn = document.getElementById("reanalyzeBtn");
-      if (reBtn) reBtn.style.display = "inline";
-    })
-    .catch(function(e) {
-      if (spinner) spinner.style.display = "none";
-      console.log("Analysis error:", e.message);
-    });
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (spinner) spinner.style.display = "none";
+    if (reBtn) reBtn.style.display = "inline";
+    var text = "";
+    try { text = data.candidates[0].content.parts[0].text || ""; } catch(e) {}
+    console.log("Analysis response:", text.slice(0, 200));
+    if (!text) {
+      if (suggEl) { suggEl.textContent = "Analiza nu a returnat rezultat. Incearca din nou."; suggEl.style.display = "block"; }
+      return;
+    }
+    if (suggEl) {
+      suggEl.textContent = text;
+      suggEl.style.display = "block";
+      var m = text.match(/PROMPT GENERARE:\s*([\s\S]+)$/);
+      suggEl.dataset.promptSuggestion = m ? m[1].trim() : text;
+    }
+    if (hintEl) hintEl.style.display = "block";
+  })
+  .catch(function(e) {
+    if (spinner) spinner.style.display = "none";
+    if (reBtn) reBtn.style.display = "inline";
+    console.log("Analysis error:", e.message);
+    if (suggEl) { suggEl.textContent = "Eroare analiza: " + e.message; suggEl.style.display = "block"; }
+  });
 };
 
 window.applySuggestion = function() {
@@ -704,7 +718,7 @@ document.addEventListener("DOMContentLoaded", function() {
           var ak0 = eng0 === "fal" ? (creds.falKey || "") : (creds.apiKey || "");
           if (btn) btn.disabled = !(ak0 && ak0.length > 10);
           // Auto-analyze
-          setTimeout(window.analyzeImage, 600);
+          setTimeout(function() { window._lastAnalyzedB64 = null; window.analyzeImage(); }, 800);
         };
         img.src = ev.target.result;
       };
@@ -734,7 +748,7 @@ document.addEventListener("DOMContentLoaded", function() {
         body: JSON.stringify({
           image_url: imageDataUri,
           prompt: prompt,
-          strength: 0.80,
+          strength: 0.65,
           num_inference_steps: 28,
           guidance_scale: 3.5,
           num_images: 1,
@@ -1219,7 +1233,7 @@ document.addEventListener("DOMContentLoaded", function() {
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
       <span style="font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);">Analiză AI — Prompt generare</span>
       <span id="analysisSpinner" style="display:none;font-size:10px;color:var(--muted);font-style:italic;">Se analizează imaginea...</span>
-      <button id="reanalyzeBtn" onclick="analyzeImage()" style="display:none;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;border:1px solid var(--rule);background:none;cursor:pointer;padding:3px 10px;color:var(--muted);font-family:Barlow,sans-serif;">Reanalyzează</button>
+      <button id="reanalyzeBtn" onclick="window.analyzeImage(true)" style="display:none;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;border:1px solid var(--rule);background:none;cursor:pointer;padding:3px 10px;color:var(--muted);font-family:Barlow,sans-serif;">Reanalyzează</button>
     </div>
     <div id="analysisSuggestion" style="width:100%;border:1px solid #C8E0B4;border-radius:4px;padding:10px 12px;font-size:11px;line-height:1.8;font-family:monospace;background:#F0F7EB;color:#2D5016;outline:none;resize:none;height:160px;overflow-y:scroll;display:none;cursor:pointer;white-space:pre-wrap;word-break:break-word;box-sizing:border-box;" onclick="applySuggestion()" title="Click pentru a aplica PROMPT GENERARE in campul de jos"></div>
     <div id="analysisApplyHint" style="display:none;font-size:9px;color:var(--green);margin-top:6px;">↑ Click pe caseta verde pentru a copia PROMPT GENERARE in campul de instructiuni de mai jos</div>
