@@ -424,7 +424,7 @@ window._loadLiveImage = function(base64, mimeType) {
     if (btn) btn.disabled = false;
     setTimeout(window.analyzeImage, 800);
     if(window.archShow)archShow();
-    setTimeout(function(){if(window.archPreload)archPreload();},1000);
+    setTimeout(function(){if(window.archPreload)archPreload();},800);
   }
 
   img.onload = function() {
@@ -926,7 +926,7 @@ function archFetch(){
   doArchFetch(k);
 }
 function doArchFetch(k){
-  var prompt='Esti un critic de arhitectura si urbanist cu cunostinte profunde despre arhitectura romaneasca si europeana. Analizeaza aceasta fotografie si incearca sa identifici cladirea, zona sau tipul de spatiu urban.\n\nScrie analiza in romana, cu voce proprie, subtila ironie si pasiune pentru arhitectura. Structureaza elegant in trei paragrafe distincte, fiecare cu un titlu scurt pe rand separat:\n\nSTIL, MATERIALITATE SI TEHNICA\n[Un paragraf despre ce vezi: stilul arhitectural, perioada, materialele folosite, detalii constructive specifice, comparatii cu arhitectura europeana similara. Daca recunosti cladirea, mentioneaz-o.]\n\nCONTEXT ISTORIC\n[Un paragraf despre istoria cladirii sau tipului de spatiu, contextul urban si social al epocii, ce reprezenta la momentul constructiei.]\n\nSTAREA ACTUALA SI POTENTIALUL\n[Un paragraf despre tensiunea dintre valoarea arhitecturala originala si utilizarea actuala, cu o nota despre potentialul de regenerare - cu ironie si luciditate.]\n\nMaxim 350 de cuvinte total. Fii specific la ce vezi in imagine, nu generic.';
+  var prompt='Rol: Esti un arhitect cu ochi de istoric si critic urban. Sarcina ta este sa analizezi imaginea cu o cladire sau un spatiu, oferind o perspectiva succinta, educativa si echilibrata. Analizeaza imaginea intr-un stil percutant si tehnic dar pe intelesul tuturor. Evita cliseele publicitare.\n\nIMPORTANT: Nu folosi niciodata asteriscuri (**), markdown, sau formatare speciala. Scrie text simplu. Titlurile sectiunilor sa fie scrise exact ca mai jos, fara modificari.\n\nStructura raspunsului (Stricta):\n\nTITLU\n[Numele Obiectivului] — [O metafora sau o descriere scurta a esentei sale]\n\nSTILUL SI CONTEXTUL\nIdentifica stilul (Modernism, Art Deco, Brutalism, Neoclasicism, etc.) si plaseaza-l intr-o epoca. Fa o scurta analogie culturala sau internationala.\n\nCE E STRUCTURAL INTERESANT\nExplica de ce arata asa. Ce problema tehnica rezolva formele respective?\n\nDETALIUL CARE MERITA ATENTIE\nIzoleaza un element specific si explica-i functia estetica sau utilitara.\n\nCE SPUNE SPATIUL IN ANSAMBLU\nCe stare transmite? Ce ambitie avea orasul cand a construit asta?\n\nREALITATEA URBANA\nO observatie scurta despre cum supravietuieste acel spatiu astazi.\n\nReguli de ton: Fara clisee de marketing. Direct, percutant, aproape cinematografic. Termeni tehnici corecti dar explicati. Nu lauda cladirea, explica-o. Fii specific la ce vezi in imagine.\n\nRaspunsul trebuie sa fie scurt (maximum 200-250 cuvinte), organizat cu subtitlurile de mai sus, usor de citit pe un ecran de telefon.';
   fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-goog-api-key':k},
@@ -936,7 +936,7 @@ function doArchFetch(k){
     var t='';try{t=d.candidates[0].content.parts[0].text||'';}catch(e){}
     _aLoad=false;
     if(!t){if(d.error)t='Eroare: '+d.error.message;else{_aHtml=null;return;}}
-    _aHtml=t.split(/\n\n+/).filter(Boolean).map(function(p){return '<p style="margin-bottom:14px">'+p.replace(/\n/g,' ')+'</p>';}).join('');
+    var clean=t.replace(/\*\*/g,'').replace(/\*/g,'');_aHtml=clean.split(/\n\n+/).filter(Boolean).map(function(p){var tr=p.trim();var titles=['TITLU','STILUL SI CONTEXTUL','CE E STRUCTURAL INTERESANT','DETALIUL CARE MERITA ATENTIE','CE SPUNE SPATIUL IN ANSAMBLU','REALITATEA URBANA'];var trClean=tr.replace(/\*\*/g,'').replace(/\*/g,'').trim().toUpperCase();var isT=titles.some(function(tt){return trClean.indexOf(tt)===0||tt.indexOf(trClean)===0;});if(isT){return '<div style="margin:18px 0 6px;border-top:1px solid #ebebeb;padding-top:14px;font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#888;">'+tr.replace(/\*\*/g,'').replace(/\*/g,'')+'</div>';}return '<p style="margin-bottom:12px;line-height:1.9;font-size:13px;">'+tr.replace(/\n/g,' ')+'</p>';}).join('');
     var b=document.getElementById('archBd');
     if(b&&b.dataset.w==='1'){b.innerHTML=_aHtml;b.dataset.w='0';}
   }).catch(function(e){_aLoad=false;_aHtml=null;var b=document.getElementById('archBd');if(b&&b.dataset.w==='1')b.innerHTML='<p style="color:#CC1B1B">Eroare: '+e.message+'</p>';});
@@ -1417,7 +1417,7 @@ document.getElementById("fileInput").addEventListener("change", function(e) {
     updateBtn();
     _aB64=null;_aHtml=null;_aLoad=false;
     archShow();
-    setTimeout(archPreload,1000);
+    setTimeout(archPreload,800);
     // Auto-analyze
     setTimeout(analyzeImage, 500);
   });
