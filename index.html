@@ -268,7 +268,7 @@ window.saveCredentials = function() {
       return;
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey: apiKey, model: model, scriptUrl: scriptUrl, token: token }));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey: apiKey, model: model, scriptUrl: scriptUrl, token: token }));
     
     var overlay = document.getElementById("modalOverlay");
     if (overlay) overlay.style.display = "none";
@@ -299,14 +299,14 @@ window.saveCredentials = function() {
 
 window.clearCredentials = function() {
   if (confirm("Stergi credentialele salvate?")) {
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
     location.reload()
   }
 };
 
 window.openSettings = function() {
   var creds = {};
-  try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
+  try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
   if (document.getElementById("setupApiKey")) document.getElementById("setupApiKey").value = creds.apiKey || "";
   if (document.getElementById("setupModel")) document.getElementById("setupModel").value = creds.model || "gemini-2.5-flash-image";
   if (document.getElementById("setupScriptUrl")) document.getElementById("setupScriptUrl").value = creds.scriptUrl || "";
@@ -358,7 +358,7 @@ window.stopLive = function() {
 
 window.startLive = function() {
   var creds = {};
-  try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
+  try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
   if (!creds.scriptUrl || !creds.token) {
     window.openSettings();
     return;
@@ -464,7 +464,7 @@ window.stopGeneration = function() {
 
 window.analyzeImage = function() {
   var creds = {};
-  try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
+  try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
   if (!window._uploadedImageB64 || !creds.apiKey) return;
   var section = document.getElementById("analysisSection");
   var spinner = document.getElementById("analysisSpinner");
@@ -624,7 +624,7 @@ window.autoDownload = function(src, name) {
 
 window.testModels = function() {
   var creds = {};
-  try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
+  try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
   var key = (creds.apiKey || "").replace(/[^ -~]/g, "").trim();
   if (!key) { alert("No API key"); return; }
   
@@ -646,7 +646,7 @@ window.testModels = function() {
 // Show modal on load if no credentials saved
 document.addEventListener("DOMContentLoaded", function() {
   try {
-    var raw = localStorage.getItem(STORAGE_KEY);
+    var raw = sessionStorage.getItem(STORAGE_KEY);
     var creds = raw ? JSON.parse(raw) : null;
     if (!creds || !creds.apiKey || creds.apiKey.length < 10) {
       var overlay = document.getElementById("modalOverlay");
@@ -688,7 +688,7 @@ document.addEventListener("DOMContentLoaded", function() {
           if (hint) hint.innerHTML = '<img src="' + dataUrl + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1A1A1A;">';
           var btn = document.getElementById("btnGenerate");
           var creds = {};
-          try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(x) {}
+          try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(x) {}
           if (btn) btn.disabled = !(creds.apiKey && creds.apiKey.length > 10);
           // Auto-analyze
           setTimeout(window.analyzeImage, 600);
@@ -705,7 +705,7 @@ document.addEventListener("DOMContentLoaded", function() {
     btnGenerate.addEventListener("click", function() {
       if (window.isGenerating) return;
       var creds = {};
-      try { creds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
+      try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
       var imgB64 = window._uploadedImageB64;
       var imgMime = window._uploadedMimeType || "image/jpeg";
       if (!imgB64 || !creds.apiKey) return;
@@ -722,20 +722,19 @@ document.addEventListener("DOMContentLoaded", function() {
       // Build prompt
       var activeTags = window._activeTags || ["fatade"];
       var tagLabels = {
-        fatade: "completely renovated building facades with fresh plaster, new window frames, balconies, warm neutral color palette",
-        verde: "lush mature trees lining the street, flower boxes on windows, climbing plants on walls",
-        pietonal: "wide pedestrian sidewalks with quality paving stones, outdoor cafe seating",
-        iluminat: "elegant modern LED street lighting with warm 3000K tone, ornamental light poles",
-        mobilier: "high-quality urban furniture: wooden benches, bicycle racks, waste bins",
-        material: "premium facade materials -- exposed brick, natural stone cladding, wood accents"
+        fatade: "Clean and restore existing facades. Remove visual clutter (cables, AC units). Completely renovated building facades with fresh plaster, new window frames, balconies, warm neutral color palette (creams, terracottas, soft grays)",
+        verde: "Integrate realistic urban landscaping. Add structured street trees along the sidewalks and ground-level planters. Do not cover the main architectural features of the buildings with vegetation",
+        pietonal: "wide pedestrian sidewalks with high-quality stone paving, outdoor cafe seating, shaded promenades",
+        iluminat: "elegant modern LED street lighting with warm 3000K tone, ornamental light poles. Ensure the lighting fixtures fit the scale of the street",
+        mobilier: "Integrate high-quality urban street furniture at the pedestrian level: wooden benches, bicycle racks, waste bins",
+        material: "upgrade surface materials of the existing structures using premium finishes like exposed brick, natural stone cladding, and wood accents, without changing the structural shape"
       };
       var stilLabels = {
         nespecificat: "",
-        contemporan: "contemporary European urban regeneration style",
-        traditional: "traditional Romanian architectural style",
-        minimalist: "minimalist Scandinavian style",
-        nordic: "Nordic modern style",
-        mediteranean: "Mediterranean style"
+        contemporan: "contemporary European urban regeneration style — clean lines, neutral palette, modern materials",
+        traditional: "incorporate Neo-Romanian architectural accents: wooden pergolas, subtle arched window trims, and traditional ceramic tile textures on roofs",
+        minimalist: "clean Scandinavian-Nordic minimalist style — natural materials, muted palette, functional beauty, warm wood tones, and simple geometric forms",
+        mediteranean: "Mediterranean style — arched elements, warm ochre tones, lush greenery, warm terracotta colors, textured stucco"
       };
       var stil = (document.getElementById("stil") || {}).value || "contemporan";
       var intens = parseInt((document.getElementById("intensitate") || {}).value || "7");
@@ -843,7 +842,7 @@ document.addEventListener("DOMContentLoaded", function() {
         self.textContent = "Genereaza din nou";
         if (stopBtn) stopBtn.style.display = "none";
         var creds2 = {};
-        try { creds2 = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(x) {}
+        try { creds2 = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(x) {}
         self.disabled = !(window._uploadedImageB64 && creds2.apiKey);
       });
     });
@@ -909,7 +908,7 @@ function archPreload(){
   if(!window._uploadedImageB64)return;
   if(_aB64===window._uploadedImageB64&&(_aHtml||_aLoad))return;
   _aLoad=true;_aHtml=null;_aB64=window._uploadedImageB64;
-  var raw=localStorage.getItem('rdw_creds_v1');
+  var raw=sessionStorage.getItem('rdw_creds_v1');
   if(!raw)return;
   var c;try{c=JSON.parse(raw);}catch(e){return;}
   var k=(c.apiKey||'').replace(/[^ -~]/g,'').trim();
@@ -918,7 +917,7 @@ function archPreload(){
 }
 function archFetch(){
   _aLoad=true;_aHtml=null;_aB64=window._uploadedImageB64;
-  var raw=localStorage.getItem('rdw_creds_v1');
+  var raw=sessionStorage.getItem('rdw_creds_v1');
   if(!raw)return;
   var c;try{c=JSON.parse(raw);}catch(e){return;}
   var k=(c.apiKey||'').replace(/[^ -~]/g,'').trim();
@@ -926,7 +925,7 @@ function archFetch(){
   doArchFetch(k);
 }
 function doArchFetch(k){
-  var prompt='Rol: Esti un arhitect cu ochi de istoric si critic urban. Sarcina ta este sa analizezi imaginea cu o cladire sau un spatiu, oferind o perspectiva succinta, educativa si echilibrata. Analizeaza imaginea intr-un stil percutant si tehnic dar pe intelesul tuturor. Evita cliseele publicitare.\n\nIMPORTANT: Nu folosi niciodata asteriscuri (**), markdown, sau formatare speciala. Scrie text simplu. Titlurile sectiunilor sa fie scrise exact ca mai jos, fara modificari.\n\nStructura raspunsului (Stricta):\n\nTITLU\n[Numele Obiectivului] — [O metafora sau o descriere scurta a esentei sale]\n\nSTILUL SI CONTEXTUL\nIdentifica stilul (Modernism, Art Deco, Brutalism, Neoclasicism, etc.) si plaseaza-l intr-o epoca. Fa o scurta analogie culturala sau internationala.\n\nCE E STRUCTURAL INTERESANT\nExplica de ce arata asa. Ce problema tehnica rezolva formele respective?\n\nDETALIUL CARE MERITA ATENTIE\nIzoleaza un element specific si explica-i functia estetica sau utilitara.\n\nCE SPUNE SPATIUL IN ANSAMBLU\nCe stare transmite? Ce ambitie avea orasul cand a construit asta?\n\nREALITATEA URBANA\nO observatie scurta despre cum supravietuieste acel spatiu astazi.\n\nReguli de ton: Fara clisee de marketing. Direct, percutant, aproape cinematografic. Termeni tehnici corecti dar explicati. Nu lauda cladirea, explica-o. Fii specific la ce vezi in imagine.\n\nRaspunsul trebuie sa fie scurt (maximum 200-250 cuvinte), organizat cu subtitlurile de mai sus, usor de citit pe un ecran de telefon.';
+  var prompt='Rol: Esti un arhitect cu ochi de istoric si critic urban cu cunostinte profunde despre arhitectura romaneasca si europeana. Sarcina ta este sa analizezi o imagine cu o cladire sau un spatiu, oferind o perspectiva succinta, educativa si echilibrata. Analizeaza imaginea intr-un stil percutant si tehnic dar pe intelesul tuturor. Evita cliseele publicitare. Scrie analiza in romana, cu voce proprie, subtila ironie si pasiune pentru arhitectura.\n\nIMPORTANT: Nu folosi niciodata asteriscuri (**), markdown sau orice formatare speciala. Scrie text simplu. Titlurile sectiunilor sa fie scrise EXACT ca mai jos, cu majuscule, pe o linie separata, urmate de continut pe randul urmator.\n\nTITLU\n[Numele Obiectivului] — [O metafora sau descriere scurta a esentei sale]\n\nSTILUL SI CONTEXTUL\nIdentifica stilul si plaseaza-l intr-o epoca. Fa o scurta analogie internationala.\n\nCE E STRUCTURAL INTERESANT\nExplica de ce arata asa. Ce problema tehnica rezolva formele respective?\n\nDETALIUL CARE MERITA ATENTIE\nIzoleaza un element specific si explica-i functia estetica sau utilitara.\n\nCE SPUNE SPATIUL IN ANSAMBLU\nCe stare transmite? Ce ambitie avea orasul cand a construit asta?\n\nREALITATEA URBANA\nO observatie despre cum supravietuieste acel spatiu astazi.\n\nReguli de ton: Fara clisee de marketing. Direct, percutant, aproape cinematografic. Termeni tehnici corecti dar explicati. Nu lauda cladirea, explica-o. Fii specific la ce vezi in imagine.\n\nRestrictie: Maximum 250-300 cuvinte total.';
   fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-goog-api-key':k},
@@ -1062,8 +1061,7 @@ function doArchFetch(k){
         <option value="nespecificat">Nespecificat — prompt liber</option>
         <option value="contemporan">Contemporan european</option>
         <option value="traditional">Tradițional românesc</option>
-        <option value="minimalist">Minimalist</option>
-        <option value="nordic">Nordic modern</option>
+        <option value="minimalist">Minimalist / Nordic</option>
         <option value="mediteranean">Mediteranean</option>
       </select>
     </div>
@@ -1158,7 +1156,7 @@ function doArchFetch(k){
 
 function getCredentials() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch(e) { return null; }
 }
@@ -1202,7 +1200,7 @@ function saveCredentials() {
       savedAt: Date.now()
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(creds));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(creds));
     
     var overlay = document.getElementById("modalOverlay");
     if (overlay) overlay.style.display = "none";
@@ -1234,7 +1232,7 @@ function applyCredentials(creds) {
 
 function clearCredentials() {
   if (confirm("Ștergi credențialele salvate?")) {
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
     location.reload();
   }
 }
