@@ -28,7 +28,7 @@ async function generateWithOpenAI(options) {
     controller.abort();
   }, 45000);
 
-  console.log("[generate-image] OpenAI ONLY start model=gpt-image-2 size=1024x1024 timeout=45000ms imageBase64Length=" + imageBase64.length);
+  console.log("[generate-image] OpenAI ONLY start model=gpt-image-2 size=1024x1024 timeout=90000ms imageBase64Length=" + imageBase64.length);
 
   const imageBuffer = Buffer.from(imageBase64, "base64");
   const blob = new Blob([imageBuffer], { type: mimeType });
