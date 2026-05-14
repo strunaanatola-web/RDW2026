@@ -391,7 +391,7 @@ window._loadLiveImage = function(base64, mimeType) {
   img.crossOrigin = "anonymous";
 
   function processImage() {
-    var MAX_PX = 1200;
+    var MAX_PX = 768;
     var w = img.naturalWidth || img.width;
     var h = img.naturalHeight || img.height;
     if (!w || !h) { console.log("Image has no dimensions"); return; }
@@ -666,7 +666,7 @@ document.addEventListener("DOMContentLoaded", function() {
     fileInput.addEventListener("change", function(e) {
       var file = e.target.files[0]; if (!file) return;
       var mimeType = file.type || "image/jpeg";
-      var MAX_PX = 1200;
+      var MAX_PX = 768;
       var reader = new FileReader();
       reader.onload = function(ev) {
         var img = new Image();
@@ -774,7 +774,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       window._abortCtrl = new AbortController();
       var ctrl = window._abortCtrl;
-      var timeoutId = setTimeout(function() { ctrl.abort(); }, 150000);
+      var timeoutId = setTimeout(function() { ctrl.abort(); }, 45000);
       var self = this;
 
       var provider = creds.provider || "openai";
@@ -916,19 +916,65 @@ function archEscapeHtml(str){
     .replace(/'/g,'&#039;');
 }
 function archFormatText(t){
-  var clean=String(t||'').replace(/\*\*/g,'').replace(/\*/g,'').trim();
+  var clean=String(t||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/\r/g,'\n').trim();
   if(!clean)return '<p style="color:#CC1B1B">Nu am primit analiza de la Claude.</p>';
-  var titles=['TITLU','STILUL ȘI CONTEXTUL','CE E STRUCTURAL INTERESANT','DETALIUL CARE MERITĂ ATENȚIE','CE SPUNE SPAȚIUL ÎN ANSAMBLU','REALITATEA URBANĂ'];
-  return clean.split(/\n\n+/).filter(Boolean).map(function(p){
-    var tr=p.trim();
-    var trClean=tr.replace(/\*\*/g,'').replace(/\*/g,'').trim().toUpperCase().replace(/:$/,'');
-    var isT=titles.some(function(tt){return trClean.indexOf(tt)===0||tt.indexOf(trClean)===0;});
-    if(isT){
-      return '<div style="margin:18px 0 6px;border-top:1px solid #ebebeb;padding-top:14px;font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#888;">'+archEscapeHtml(tr)+'</div>';
+
+  var sections=[
+    {key:'TITLU', label:''},
+    {key:'STILUL ȘI CONTEXTUL', label:'STILUL ȘI CONTEXTUL'},
+    {key:'CE E STRUCTURAL INTERESANT', label:'CE E STRUCTURAL INTERESANT'},
+    {key:'DETALIUL CARE MERITĂ ATENȚIE', label:'DETALIUL CARE MERITĂ ATENȚIE'},
+    {key:'CE SPUNE SPAȚIUL ÎN ANSAMBLU', label:'CE SPUNE SPAȚIUL ÎN ANSAMBLU'},
+    {key:'REALITATEA URBANĂ', label:'REALITATEA URBANĂ'}
+  ];
+
+  function escRe(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+
+  // Marchează capitolele ca să separăm titlul capitolului de textul generat.
+  sections.forEach(function(sec,i){
+    var re=new RegExp(escRe(sec.key)+'\\s*:?','gi');
+    clean=clean.replace(re,'\n@@ARCH_SEC_'+i+'@@\n');
+  });
+
+  var parts=clean.split(/@@ARCH_SEC_(\d+)@@/g);
+  var html='';
+  var current=null;
+
+  function bodyHtml(txt){
+    var body=String(txt||'').trim();
+    if(!body)return '';
+    body=body.replace(/^[:\s]+/,'').trim();
+    return '<p style="margin:6px 0 16px;line-height:1.7;font-size:14px;font-weight:400;letter-spacing:0.01em;text-transform:none;color:#1f3f1d;font-family:\'Barlow\',sans-serif;">'+archEscapeHtml(body).replace(/\n+/g,'<br>')+'</p>';
+  }
+
+  function titleHtml(txt){
+    var body=String(txt||'').trim().replace(/^[:\s]+/,'').trim();
+    if(!body)return '';
+    return '<div style="margin:8px 0 18px;padding-bottom:14px;border-bottom:1px solid #ebebeb;font-size:15px;font-weight:600;line-height:1.55;letter-spacing:0.02em;text-transform:none;color:#111;font-family:\'Barlow\',sans-serif;">'+archEscapeHtml(body).replace(/\n+/g,' ')+'</div>';
+  }
+
+  for(var i=0;i<parts.length;i++){
+    if(i%2===1){
+      current=sections[parseInt(parts[i],10)];
+      continue;
     }
-    return '<p style="margin-bottom:12px;line-height:1.9;font-size:13px;">'+archEscapeHtml(tr).replace(/\n/g,' ')+'</p>';
-  }).join('');
+    var content=parts[i];
+    if(!content || !content.trim())continue;
+
+    if(current && current.key==='TITLU'){
+      // Nu afișăm cuvântul „TITLU”; afișăm doar titlul generat.
+      html+=titleHtml(content);
+    } else if(current){
+      html+='<div style="margin:18px 0 4px;border-top:1px solid #ebebeb;padding-top:14px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#111;font-family:\'Barlow\',sans-serif;">'+archEscapeHtml(current.label)+':</div>';
+      html+=bodyHtml(content);
+    } else {
+      html+=bodyHtml(content);
+    }
+  }
+
+  return html || '<p style="color:#CC1B1B">Nu am primit analiza de la Claude.</p>';
 }
+
 function doArchFetch(){
   fetch('/.netlify/functions/claude-analysis',{
     method:'POST',
@@ -1103,7 +1149,7 @@ function doArchFetch(){
           <span style="font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;">Analiza Arhitecturala</span>
           <button onclick="archClose()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#999;line-height:1;padding:0;">&#xD7;</button>
         </div>
-        <div id="archBd" style="padding:16px 18px;overflow-y:auto;flex:1;font-size:12px;line-height:1.8;color:#111;"></div>
+        <div id="archBd" style="padding:18px 22px;overflow-y:auto;flex:1;font-size:14px;line-height:1.7;color:#1f3f1d;font-family:'Barlow',sans-serif;"></div>
       </div>
     <div class="img-box" id="resultBox" style="cursor:default;">
       <div class="result-placeholder">
