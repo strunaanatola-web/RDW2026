@@ -1,2 +1,17 @@
 [build]
   functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[functions."generate-image"]
+  timeout = 60
+
+[functions."claude-analysis"]
+  timeout = 30
+
+[functions."prompt-analysis"]
+  timeout = 30
+
+[functions."proxy"]
+  timeout = 15
