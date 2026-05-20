@@ -9,17 +9,15 @@ function json(statusCode, body) {
   return { statusCode, headers: CORS_HEADERS, body: JSON.stringify(body) };
 }
 
-// ── GEMINI img2img ──────────────────────────────────────────────
 async function generateWithGemini(options) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Lipseste GEMINI_API_KEY in Netlify Environment Variables.");
+  if (!apiKey) throw new Error("Lipseste GEMINI_API_KEY.");
 
   const { prompt, imageBase64, mimeType } = options;
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 55000);
 
-  console.log("[generate-image] Gemini start imageBase64Length=" + imageBase64.length);
+  console.log("[generate-image] Gemini start length=" + imageBase64.length);
 
   const body = {
     contents: [{
@@ -29,62 +27,54 @@ async function generateWithGemini(options) {
       ]
     }],
     generationConfig: {
-      responseModalities: ["image", "text"],
-      responseMimeType: "image/png"
+      responseModalities: ["IMAGE", "TEXT"]
     }
   };
 
   let response;
   try {
     response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-image-generation:generateContent?key=" + apiKey,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: controller.signal
-      }
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=" + apiKey,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: controller.signal }
     );
   } catch (err) {
     clearTimeout(timeout);
-    if (err.name === "AbortError") throw new Error("Timeout Gemini API");
+    if (err.name === "AbortError") throw new Error("Timeout Gemini");
     throw err;
   }
   clearTimeout(timeout);
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.error) {
-    console.log("[generate-image] Gemini ERROR " + JSON.stringify(data).slice(0, 500));
+    console.log("[generate-image] Gemini ERROR " + JSON.stringify(data).slice(0, 300));
     throw new Error(data.error?.message || "Gemini error " + response.status);
   }
 
   const parts = data.candidates?.[0]?.content?.parts || [];
   const imgPart = parts.find(p => p.inlineData?.mimeType?.startsWith("image/"));
   if (!imgPart) {
-    console.log("[generate-image] Gemini NO IMAGE " + JSON.stringify(data).slice(0, 500));
+    console.log("[generate-image] Gemini NO IMAGE parts=" + JSON.stringify(parts).slice(0, 300));
     throw new Error("Gemini nu a returnat imagine.");
   }
 
-  console.log("[generate-image] Gemini success");
+  console.log("[generate-image] Gemini success mimeType=" + imgPart.inlineData.mimeType);
   return {
     image: imgPart.inlineData.data,
     mimeType: imgPart.inlineData.mimeType || "image/png",
     providerUsed: "gemini",
-    modelUsed: "gemini-2.5-flash-preview-image-generation"
+    modelUsed: "gemini-2.5-flash-image"
   };
 }
 
-// ── OPENAI img2img ──────────────────────────────────────────────
 async function generateWithOpenAI(options) {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("Lipseste OPENAI_API_KEY in Netlify Environment Variables.");
+  if (!apiKey) throw new Error("Lipseste OPENAI_API_KEY.");
 
   const { prompt, imageBase64, mimeType } = options;
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 55000);
 
-  console.log("[generate-image] OpenAI start model=gpt-image-1 imageBase64Length=" + imageBase64.length);
+  console.log("[generate-image] OpenAI start length=" + imageBase64.length);
 
   const imageBuffer = Buffer.from(imageBase64, "base64");
   const blob = new Blob([imageBuffer], { type: mimeType || "image/jpeg" });
@@ -92,7 +82,6 @@ async function generateWithOpenAI(options) {
   formData.append("model", "gpt-image-1");
   formData.append("prompt", prompt);
   formData.append("size", "1024x1024");
-  formData.append("response_format", "b64_json");
   formData.append("image", blob, "building.jpg");
 
   let response;
@@ -105,30 +94,35 @@ async function generateWithOpenAI(options) {
     });
   } catch (err) {
     clearTimeout(timeout);
-    if (err.name === "AbortError") throw new Error("Timeout OpenAI API");
+    if (err.name === "AbortError") throw new Error("Timeout OpenAI");
     throw err;
   }
   clearTimeout(timeout);
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.error) {
-    console.log("[generate-image] OpenAI ERROR " + JSON.stringify(data).slice(0, 500));
+    console.log("[generate-image] OpenAI ERROR " + JSON.stringify(data).slice(0, 300));
     throw new Error(data.error?.message || "OpenAI error " + response.status);
   }
 
   const b64 = data.data?.[0]?.b64_json;
-  if (!b64) throw new Error("OpenAI nu a returnat imagine.");
+  if (!b64) {
+    // openai may return url instead of b64
+    const url = data.data?.[0]?.url;
+    if (url) {
+      console.log("[generate-image] OpenAI returned URL, fetching...");
+      const imgResp = await fetch(url);
+      const imgBuf = await imgResp.arrayBuffer();
+      const imgB64 = Buffer.from(imgBuf).toString("base64");
+      return { image: imgB64, mimeType: "image/png", providerUsed: "openai", modelUsed: "gpt-image-1" };
+    }
+    throw new Error("OpenAI nu a returnat imagine.");
+  }
 
   console.log("[generate-image] OpenAI success");
-  return {
-    image: b64,
-    mimeType: "image/png",
-    providerUsed: "openai",
-    modelUsed: "gpt-image-1"
-  };
+  return { image: b64, mimeType: "image/png", providerUsed: "openai", modelUsed: "gpt-image-1" };
 }
 
-// ── HANDLER ─────────────────────────────────────────────────────
 exports.handler = async function(event) {
   try {
     if (event.httpMethod === "OPTIONS") return json(200, {});
@@ -136,7 +130,6 @@ exports.handler = async function(event) {
 
     const body = JSON.parse(event.body || "{}");
     const { prompt, imageBase64, mimeType, provider } = body;
-
     if (!prompt || !imageBase64) return json(400, { error: "Lipseste promptul sau imaginea." });
 
     const selectedProvider = provider || "gemini";
@@ -146,15 +139,13 @@ exports.handler = async function(event) {
     if (selectedProvider === "openai") {
       result = await generateWithOpenAI({ prompt, imageBase64, mimeType });
     } else {
-      // gemini (default) — cu fallback la openai daca gemini nu are key
       try {
         result = await generateWithGemini({ prompt, imageBase64, mimeType });
       } catch (geminiErr) {
-        console.log("[generate-image] Gemini failed: " + geminiErr.message + " — trying OpenAI fallback");
+        console.log("[generate-image] Gemini failed: " + geminiErr.message + " — OpenAI fallback");
         if (!process.env.OPENAI_API_KEY) throw geminiErr;
         result = await generateWithOpenAI({ prompt, imageBase64, mimeType });
         result.fallback = true;
-        result.fallbackReason = geminiErr.message;
       }
     }
 
