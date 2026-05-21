@@ -283,7 +283,7 @@ window.saveCredentials = function() {
     if (apiStatusDot) apiStatusDot.className = "status-dot ok";
     if (apiStatusVal) apiStatusVal.textContent = "backend";
     if (modelStatusDot) modelStatusDot.className = "status-dot ok";
-    if (modelStatusVal) modelStatusVal.textContent = provider === "stability" ? "stability structure" : (provider === "openai" ? "gpt-image-2 → gemini fallback" : "gemini");
+    if (modelStatusVal) modelStatusVal.textContent = provider === "openai" ? "gpt-image-2 → gemini fallback" : "gemini";
     if (liveStatusDot) liveStatusDot.className = scriptUrl ? "status-dot ok" : "status-dot warn";
     if (liveStatusVal) liveStatusVal.textContent = scriptUrl ? "configurat" : "neconfigurat";
 
@@ -625,7 +625,7 @@ window.testModels = function() { alert("Cheile API sunt configurate în backend 
 
 
 
-window.generateImageSecure = async function(prompt, imgB64, mime, provider, model, controlStrength, negativePrompt) {
+window.generateImageSecure = async function(prompt, imgB64, mime, provider, model) {
   var response = await fetch("/.netlify/functions/generate-image", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -634,9 +634,7 @@ window.generateImageSecure = async function(prompt, imgB64, mime, provider, mode
       imageBase64: imgB64,
       mimeType: mime || "image/jpeg",
       provider: provider || "openai",
-      model: model || "gemini-2.5-flash-image",
-      controlStrength: controlStrength,
-      negativePrompt: negativePrompt
+      model: model || "gemini-2.5-flash-image"
     })
   });
 
@@ -721,7 +719,6 @@ document.addEventListener("DOMContentLoaded", function() {
       var imgB64 = window._uploadedImageB64;
       var imgMime = window._uploadedMimeType || "image/jpeg";
       if (!imgB64) return;
-      var provider = creds.provider || "gemini";
 
       var MODEL_MAP = {
         "gemini-2.5-flash-image": true,
@@ -765,39 +762,6 @@ document.addEventListener("DOMContentLoaded", function() {
       var intens = intensEl ? parseInt(intensEl.value || "7", 10) : 7;
       var intensLabel = intens <= 3 ? "low" : (intens <= 7 ? "medium" : "high");
       var prompt = "You are an expert urban regeneration architect.\n\nTransform this photograph into a photorealistic vision of urban renewal. " + stil_text + "\n\nInterventions (intensity: " + intensLabel + ", " + intens + "/10):\n- " + interventions + (userExtra ? "\n\nAdditional: " + userExtra : "") + "\n\nCRITICAL: Keep perspective and angle exactly as is. Same aspect ratio. Same camera angle. Photorealistic. Focus on architecture. Preserve the exact same angle, perspective, and framing of the original image.";
-      var controlStrength = null;
-      var negativePrompt = "";
-
-      if (provider === "stability") {
-        var stabilityTagLabels = {
-          fatade: "restored european facades, warm cream lime plaster, soft terracotta accents, deep green or charcoal window frames, restored cornices, clean facade details, no cables, no AC units, no signage",
-          verde: "mature street trees, flush granite tree pits, lavender planters, ornamental grasses, realistic urban vegetation, clear pedestrian paths",
-          pietonal: "pedestrian european boulevard, limestone paving, granite setts, outdoor cafe terraces, canvas umbrellas, rattan chairs, realistic people, no cars",
-          iluminat: "dusk atmosphere, warm 2700K street lamps, amber facade uplighting, warm shopfront glow, wet pavement reflections, cinematic night lighting",
-          mobilier: "premium street furniture, hardwood benches, dark metal bicycle racks, brushed steel bins, low granite bollards, coherent public space design",
-          material: "natural material upgrade, pale limestone ashlar, warm brick, bronze window frames, zinc or copper roof details, realistic surface textures"
-        };
-        var stabilityStilLabels = {
-          nespecificat: "urban renewal architecture",
-          contemporan: "contemporary european architecture, pale stone panels, dark aluminum frames, clean horizontal lines, glazed ground floor, soft overcast daylight",
-          traditional: "Neo-Romanian architecture, carved stone portals, ceramic friezes, wooden eaves, warm ochre stucco, interwar Bucharest atmosphere",
-          minimalist: "Nordic minimalist architecture, pale render, vertical larch wood, large flush windows, raw concrete plinth, sparse birch planting",
-          mediteranean: "Southern Mediterranean vernacular, sun bleached plaster, terracotta walls, timber shutters, wrought iron balconies, bougainvillea",
-          artnouv: "Art Nouveau architecture, sinuous ironwork, floral ceramic tiles, curved stone lintels, stained glass transoms, warm morning light",
-          brutalist: "Brutalist architecture, board formed concrete, recessed windows, massive cantilevered volumes, raw concrete texture, dramatic side light",
-          artdeco: "Art Deco boulevard, cream limestone facades, bronze window frames, geometric ornament, vertical fluting, elegant interwar architecture",
-          moorish: "Moorish Islamic architecture, zellige tilework, carved white plaster, arabesque patterns, horseshoe arches, deep warm shadows",
-          japonez: "traditional Japanese machiya architecture, dark timber frame, white plaster infill, deep tiled eaves, shoji windows, Kyoto atmosphere",
-          metabolism: "Japanese Metabolism architecture, modular concrete capsules, circular porthole windows, exposed service cores, industrial overcast atmosphere",
-          constructivist: "Soviet Constructivist architecture, geometric volumes, red brick, white cement render, ribbon windows, graphic facade composition",
-          verde_utopic: "biophilic living architecture, cascading vertical gardens, planted terraces, rooftop forest, dense realistic vegetation, golden hour mist"
-        };
-        var stabilityInterventions = activeTags.map(function(t) { return stabilityTagLabels[t] || t; }).join(", ");
-        var stabilityStyle = stabilityStilLabels[stil] || stabilityStilLabels.nespecificat;
-        controlStrength = intens <= 3 ? 0.85 : (intens <= 7 ? 0.72 : 0.60);
-        negativePrompt = "warped buildings, distorted windows, crooked perspective, broken facade geometry, melted architecture, blurry, low quality, oversaturated, cartoon, illustration, text, watermark, logo, duplicated doors, floating objects, deformed people";
-        prompt = "Photorealistic urban regeneration, " + stabilityStyle + ", " + stabilityInterventions + ", realistic materials, architectural photography, ultra detailed, clean composition, preserve original street geometry and camera perspective" + (userExtra ? ", " + userExtra : "");
-      }
 
       window.isGenerating = true;
       this.disabled = true;
@@ -829,9 +793,11 @@ document.addEventListener("DOMContentLoaded", function() {
       var timeoutId = setTimeout(function() { ctrl.abort(); }, 45000);
       var self = this;
 
+      var provider = creds.provider || "gemini";
+
       var requestPromise;
 
-      requestPromise = window.generateImageSecure(prompt, imgB64, imgMime, provider, model, controlStrength, negativePrompt)
+      requestPromise = window.generateImageSecure(prompt, imgB64, imgMime, provider, model)
         .then(function(genSrc) {
           clearTimeout(timeoutId);
           window._abortCtrl = null;
