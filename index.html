@@ -201,7 +201,7 @@ body { font-family: 'Barlow', sans-serif; background: var(--paper); color: var(-
 .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.93); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; }
 .spinner { width: 24px; height: 24px; border: 1.5px solid var(--rule); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 14px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 24px; letter-spacing: 0.02em; text-transform: none; color: var(--ink); font-weight: 400; line-height: 1.55; text-align: center; max-width: 420px; padding: 0 24px; transition: opacity 0.35s ease; }
+.loading-text { font-size: 16px; letter-spacing: 0.02em; text-transform: none; color: var(--ink); font-weight: 400; line-height: 1.55; text-align: center; max-width: 420px; padding: 0 24px; transition: opacity 0.35s ease; }
 .loading-sub { font-size: 9px; color: #BBBBBB; margin-top: 6px; }
 .ba-labels { display: none; justify-content: space-between; margin-top: 8px; }
 .ba-labels.visible { display: flex; }
@@ -267,7 +267,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
 .lang-switch button.active { background: var(--ink); color: #fff; }
 .lang-switch button:hover:not(.active) { color: var(--ink); }
 .header-subtitle { font-size: 13px; font-weight: 300; color: var(--muted); margin-top: 4px; letter-spacing: 0.02em; line-height: 1.35; }
-.arch-loading-text { font-size: 24px; letter-spacing: 0.02em; text-transform: none; color: var(--ink); font-weight: 400; line-height: 1.55; text-align: center; max-width: 420px; padding: 0 24px; }
+.arch-loading-text { font-size: 18px; letter-spacing: 0.02em; text-transform: none; color: var(--ink); font-weight: 400; line-height: 1.55; text-align: center; max-width: 420px; padding: 0 24px; }
 
 </style>
 
@@ -291,7 +291,7 @@ var I18N = {
     arch_style: "Stil arhitectural", keep_style: "Păstrează stilul", contemporary: "Contemporan european", traditional: "Tradițional românesc", minimalist: "Minimalist / Nordic", mediterranean: "Mediteranean", artnouveau: "Art Nouveau", brutalist: "Brutalist", artdeco: "Art Deco", moorish: "Islamic / Moorish", japanese: "Japonez", metabolism: "Metabolism", constructivist: "Constructivist", utopian_green: "Verde utopic",
     intensity: "Intensitate", generate: "Generează", generating: "Se generează...", generate_again: "Generează din nou", generated_image: "Imagine generată", result_here: "Rezultatul va apărea aici", generated: "Generat", download: "⬇ Descarcă", save_drive: "☁ Salvează Drive", scan_upload: "Scanați pentru a încărca foto",
     extra_details: "Detalii suplimentare", extra_examples: "Ex: «păstrează culoarea roșie a fațadei», «adaugă balcoane cu flori»", ai_analysis_prompt: "Analiză AI — Prompt generare", analyzing_image: "Se analizează imaginea...", reanalyze: "Reanalizează", apply_hint: "↑ Click pe caseta verde pentru a copia PROMPT GENERARE în câmpul de instrucțiuni de mai jos", extra_placeholder: "Adaugă instrucțiuni specifice suplimentare...", prompt_hint: "Promptul de bază se trimite automat. Câmpul de mai sus adaugă instrucțiuni personalizate.",
-    loading_analyze: "Familiaritatea este o formă de orbire.", loading_style: "La un moment dat, a devenit invizibil.", loading_facades: "Orașul era mereu acolo.", loading_render: "Contrastul obligă privirea să se întoarcă.", loading_new_city: "Nu vezi un oraș nou.", loading_old_city: "Îl vezi pe cel vechi pentru prima dată.", error: "Eroare", no_image: "Încarcă mai întâi o imagine.", waiting_photo: "Aștept fotografie...", waiting_sub: "Când un vizitator uploadează prin Google Form,<br>fotografia apare automat aici", timeout_error: "Timeout sau oprit. Încearcă din nou.",
+    loading_analyze: "Familiaritatea este o formă de orbire.", loading_style: "La un moment dat, a devenit invizibil.", loading_facades: "Orașul era mereu acolo.", loading_render: "Contrastul obligă privirea să se întoarcă.", loading_new_city: "Nu vezi un oraș nou.", loading_old_city: "Îl vezi pe cel vechi pentru prima dată.", error: "Eroare", no_image: "Încarcă mai întâi o imagine.", waiting_photo: "Aștept fotografie...", waiting_sub: "Când un vizitator uploadează prin Google Form,<br>fotografia apare automat aici", timeout_error: "Timeout sau oprit. Încearcă din nou.", ai_disclaimer: "AI-ul poate face greșeli. Verifică informațiile importante.",
     prompt_analysis_format: "ANALIZA: [2-3 sentences in Romanian describing: building type, architectural style, current materials, condition, key elements visible]"
   },
   en: {
@@ -306,14 +306,14 @@ var I18N = {
     arch_style: "Architectural style", keep_style: "Keep style", contemporary: "Contemporary European", traditional: "Romanian traditional", minimalist: "Minimalist / Nordic", mediterranean: "Mediterranean", artnouveau: "Art Nouveau", brutalist: "Brutalist", artdeco: "Art Deco", moorish: "Islamic / Moorish", japanese: "Japanese", metabolism: "Metabolism", constructivist: "Constructivist", utopian_green: "Utopian green",
     intensity: "Intensity", generate: "Generate", generating: "Generating...", generate_again: "Generate again", generated_image: "Generated image", result_here: "The result will appear here", generated: "Generated", download: "⬇ Download", save_drive: "☁ Save to Drive", scan_upload: "Scan to upload photo",
     extra_details: "Additional details", extra_examples: "Ex: “keep the red facade color”, “add balconies with flowers”", ai_analysis_prompt: "AI analysis — Generation prompt", analyzing_image: "Analyzing image...", reanalyze: "Reanalyze", apply_hint: "↑ Click the green box to copy PROMPT GENERARE into the instruction field below", extra_placeholder: "Add specific additional instructions...", prompt_hint: "The base prompt is sent automatically. The field above adds custom instructions.",
-    loading_analyze: "Familiarity is a kind of blindness.", loading_style: "At some point, it became invisible.", loading_facades: "The city was always there.", loading_render: "Contrast forces the eye to look again.", loading_new_city: "You are not seeing a new city.", loading_old_city: "You are seeing the old one for the first time.", error: "Error", no_image: "Upload an image first.", waiting_photo: "Waiting for photo...", waiting_sub: "When a visitor uploads through Google Form,<br>the photo appears here automatically", timeout_error: "Timeout or stopped. Try again.",
+    loading_analyze: "Familiarity is a kind of blindness.", loading_style: "At some point, it became invisible.", loading_facades: "The city was always there.", loading_render: "Contrast forces the eye to look again.", loading_new_city: "You are not seeing a new city.", loading_old_city: "You are seeing the old one for the first time.", error: "Error", no_image: "Upload an image first.", waiting_photo: "Waiting for photo...", waiting_sub: "When a visitor uploads through Google Form,<br>the photo appears here automatically", timeout_error: "Timeout or stopped. Try again.", ai_disclaimer: "AI can make mistakes. Check important information.",
     prompt_analysis_format: "ANALYSIS: [2-3 sentences in English describing: building type, architectural style, current materials, condition, key visible elements]"
   }
 };
 function tr(key){ return (I18N[window.currentLang] && I18N[window.currentLang][key]) || I18N.ro[key] || key; }
 function curatorMessages(){ return [tr("loading_analyze"), tr("loading_style"), tr("loading_facades"), tr("loading_render"), tr("loading_new_city"), tr("loading_old_city")]; }
 function curatorLoadingHtml(id){ return '<div class="loading-overlay"><div class="spinner"></div><div class="loading-text" id="' + (id || 'loadingText') + '">' + curatorMessages()[0] + '</div></div>'; }
-function startCuratorTextLoop(elId){ var msgs = curatorMessages(); var mi = 1; return setInterval(function(){ var el = document.getElementById(elId); if(el){ el.style.opacity = '0'; setTimeout(function(){ el.textContent = msgs[mi % msgs.length]; el.style.opacity = '1'; mi++; }, 160); } }, 5700); }
+function startCuratorTextLoop(elId){ var msgs = curatorMessages(); var mi = 1; return setInterval(function(){ var el = document.getElementById(elId); if(el){ el.style.opacity = '0'; setTimeout(function(){ el.textContent = msgs[mi % msgs.length]; el.style.opacity = '1'; mi++; }, 160); } }, 3800); }
 window.setLanguage = function(lang){
   window.currentLang = lang === "en" ? "en" : "ro";
   localStorage.setItem(LANG_KEY, window.currentLang);
@@ -505,7 +505,7 @@ window._loadLiveImage = function(base64, mimeType) {
     if (zone) zone.classList.add("has-image");
     if (hint) hint.innerHTML = '<img src="' + dataUrl + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1A1A1A;">';
     var banner = document.getElementById("newPhotoBanner");
-    if (banner) { banner.classList.add("visible"); setTimeout(function(){ banner.classList.remove("visible"); }, 5700); }
+    if (banner) { banner.classList.add("visible"); setTimeout(function(){ banner.classList.remove("visible"); }, 3800); }
     var btn = document.getElementById("btnGenerate");
     if (btn) btn.disabled = false;
     setTimeout(window.analyzeImage, 800);
@@ -1280,8 +1280,9 @@ function doArchFetch(){
     <div class="img-panel-label" data-i18n="generated_image">Imagine generată</div>
     <div style="position:relative;">
       <div id="archOv" style="display:none;position:absolute;inset:0;z-index:50;flex-direction:column;background:rgba(255,255,255,0.97);border:1px solid #e0e0e0;box-shadow:0 2px 16px rgba(0,0,0,0.15);">
-        <div style="padding:14px 18px 10px;border-bottom:1px solid #dedede;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-          <span style="font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;" data-i18n="arch_analysis">Analiză arhitecturală</span>
+        <div style="padding:14px 18px 10px;border-bottom:1px solid #dedede;display:flex;align-items:center;gap:16px;flex-shrink:0;">
+          <span style="font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;white-space:nowrap;" data-i18n="arch_analysis">Analiză arhitecturală</span>
+          <span style="margin-left:auto;margin-right:14px;font-size:11px;letter-spacing:.01em;text-transform:none;color:#999;font-weight:400;" data-i18n="ai_disclaimer">AI-ul poate face greșeli. Verifică informațiile importante.</span>
           <button onclick="archClose()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#999;line-height:1;padding:0;">&#xD7;</button>
         </div>
         <div id="archBd" style="padding:18px 22px;overflow-y:auto;flex:1;font-size:14px;line-height:1.7;color:#1f3f1d;font-family:'Barlow',sans-serif;"></div>
