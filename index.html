@@ -281,7 +281,7 @@ window.currentLang = localStorage.getItem(LANG_KEY) || "ro";
 var I18N = {
   ro: {
     title: "Când familiarul devine altfel, începi să-l vezi din nou.",
-    subtitle: "Încarcă o imagine și vezi orașul ca și cum l-ai întâlni pentru prima dată.",
+    subtitle: "Încarcă o imagine și vezi orașul ca pentru prima dată.",
     provider_ai: "Provider AI", ai_backend: "AI Backend", backend_note: "Cheile API nu se mai introduc aici. Sunt salvate în Netlify → Environment Variables.",
     generation_model: "Model de generare", live_event: "Live Event — Google Form", optional: "opțional", live_note: "Completează doar dacă vrei să folosești modul Live Event cu Google Form.",
     password: "Parolă", save_enter: "Salvează și intră în aplicație", local_data: "Datele sunt salvate local în browser.", clear_credentials: "Șterge credențialele",
@@ -291,12 +291,12 @@ var I18N = {
     arch_style: "Stil arhitectural", keep_style: "Păstrează stilul", contemporary: "Contemporan european", traditional: "Tradițional românesc", minimalist: "Minimalist / Nordic", mediterranean: "Mediteranean", artnouveau: "Art Nouveau", brutalist: "Brutalist", artdeco: "Art Deco", moorish: "Islamic / Moorish", japanese: "Japonez", metabolism: "Metabolism", constructivist: "Constructivist", utopian_green: "Verde utopic",
     intensity: "Intensitate", generate: "Generează", generating: "Se generează...", generate_again: "Generează din nou", generated_image: "Imagine generată", result_here: "Rezultatul va apărea aici", generated: "Generat", download: "⬇ Descarcă", save_drive: "☁ Salvează Drive", scan_upload: "Scanați pentru a încărca foto",
     extra_details: "Detalii suplimentare", extra_examples: "Ex: «păstrează culoarea roșie a fațadei», «adaugă balcoane cu flori»", ai_analysis_prompt: "Analiză AI — Prompt generare", analyzing_image: "Se analizează imaginea...", reanalyze: "Reanalizează", apply_hint: "↑ Click pe caseta verde pentru a copia PROMPT GENERARE în câmpul de instrucțiuni de mai jos", extra_placeholder: "Adaugă instrucțiuni specifice suplimentare...", prompt_hint: "Promptul de bază se trimite automat. Câmpul de mai sus adaugă instrucțiuni personalizate.",
-    loading_analyze: "Familiaritatea este o formă de orbire.", loading_style: "La un moment dat, a devenit invizibil.", loading_facades: "Orașul era mereu acolo.", loading_render: "Contrastul obligă privirea să se întoarcă.", loading_new_city: "Nu vezi un oraș nou.", loading_old_city: "Îl vezi pe cel vechi pentru prima dată.", error: "Eroare", no_image: "Încarcă mai întâi o imagine.", waiting_photo: "Aștept fotografie...", waiting_sub: "Când un vizitator uploadează prin Google Form,<br>fotografia apare automat aici", timeout_error: "Timeout sau oprit. Încearcă din nou.", ai_disclaimer: "AI-ul poate face greșeli. Verifică informațiile importante.",
+    loading_analyze: "Orașul este mereu acolo.", loading_style: "La un moment dat devine invizibil.", loading_facades: "Familiaritatea este o formă de orbire.", loading_render: "Schimbă stilul. Redescoperă orașul.", loading_new_city: "Nu vezi un oraș nou.", loading_old_city: "Îl vezi pe cel vechi pentru prima dată.", error: "Eroare", no_image: "Încarcă mai întâi o imagine.", waiting_photo: "Aștept fotografie...", waiting_sub: "Când un vizitator uploadează prin Google Form,<br>fotografia apare automat aici", timeout_error: "Timeout sau oprit. Încearcă din nou.", ai_disclaimer: "AI-ul poate face greșeli. Verifică informațiile importante.",
     prompt_analysis_format: "ANALIZA: [2-3 sentences in Romanian describing: building type, architectural style, current materials, condition, key elements visible]"
   },
   en: {
     title: "When the familiar becomes unfamiliar, you begin to see it again.",
-    subtitle: "Upload an image and see the city as if you were encountering it for the first time.",
+    subtitle: "Upload an image and see the city as if for the first time.",
     provider_ai: "AI Provider", ai_backend: "AI Backend", backend_note: "API keys are no longer entered here. They are stored in Netlify → Environment Variables.",
     generation_model: "Generation model", live_event: "Live Event — Google Form", optional: "optional", live_note: "Fill this in only if you want to use Live Event mode with Google Form.",
     password: "Password", save_enter: "Save and enter app", local_data: "Data is saved locally in the browser.", clear_credentials: "Clear credentials",
@@ -306,14 +306,14 @@ var I18N = {
     arch_style: "Architectural style", keep_style: "Keep style", contemporary: "Contemporary European", traditional: "Romanian traditional", minimalist: "Minimalist / Nordic", mediterranean: "Mediterranean", artnouveau: "Art Nouveau", brutalist: "Brutalist", artdeco: "Art Deco", moorish: "Islamic / Moorish", japanese: "Japanese", metabolism: "Metabolism", constructivist: "Constructivist", utopian_green: "Utopian green",
     intensity: "Intensity", generate: "Generate", generating: "Generating...", generate_again: "Generate again", generated_image: "Generated image", result_here: "The result will appear here", generated: "Generated", download: "⬇ Download", save_drive: "☁ Save to Drive", scan_upload: "Scan to upload photo",
     extra_details: "Additional details", extra_examples: "Ex: “keep the red facade color”, “add balconies with flowers”", ai_analysis_prompt: "AI analysis — Generation prompt", analyzing_image: "Analyzing image...", reanalyze: "Reanalyze", apply_hint: "↑ Click the green box to copy PROMPT GENERARE into the instruction field below", extra_placeholder: "Add specific additional instructions...", prompt_hint: "The base prompt is sent automatically. The field above adds custom instructions.",
-    loading_analyze: "Familiarity is a kind of blindness.", loading_style: "At some point, it became invisible.", loading_facades: "The city was always there.", loading_render: "Contrast forces the eye to look again.", loading_new_city: "You are not seeing a new city.", loading_old_city: "You are seeing the old one for the first time.", error: "Error", no_image: "Upload an image first.", waiting_photo: "Waiting for photo...", waiting_sub: "When a visitor uploads through Google Form,<br>the photo appears here automatically", timeout_error: "Timeout or stopped. Try again.", ai_disclaimer: "AI can make mistakes. Check important information.",
+    loading_analyze: "The city was always there.", loading_style: "At some point, it became invisible.", loading_facades: "Familiarity is a kind of blindness.", loading_render: "Change the style. Rediscover the city.", loading_new_city: "You are not seeing a new city.", loading_old_city: "You are seeing the old one for the first time.", error: "Error", no_image: "Upload an image first.", waiting_photo: "Waiting for photo...", waiting_sub: "When a visitor uploads through Google Form,<br>the photo appears here automatically", timeout_error: "Timeout or stopped. Try again.", ai_disclaimer: "AI can make mistakes. Check important information.",
     prompt_analysis_format: "ANALYSIS: [2-3 sentences in English describing: building type, architectural style, current materials, condition, key visible elements]"
   }
 };
 function tr(key){ return (I18N[window.currentLang] && I18N[window.currentLang][key]) || I18N.ro[key] || key; }
 function curatorMessages(){ return [tr("loading_analyze"), tr("loading_style"), tr("loading_facades"), tr("loading_render"), tr("loading_new_city"), tr("loading_old_city")]; }
 function curatorLoadingHtml(id){ return '<div class="loading-overlay"><div class="spinner"></div><div class="loading-text" id="' + (id || 'loadingText') + '">' + curatorMessages()[0] + '</div></div>'; }
-function startCuratorTextLoop(elId){ var msgs = curatorMessages(); var mi = 1; return setInterval(function(){ var el = document.getElementById(elId); if(el){ el.style.opacity = '0'; setTimeout(function(){ el.textContent = msgs[mi % msgs.length]; el.style.opacity = '1'; mi++; }, 160); } }, 3800); }
+function startCuratorTextLoop(elId){ var msgs = curatorMessages(); var mi = 1; return setInterval(function(){ var el = document.getElementById(elId); if(el){ el.style.opacity = '0'; setTimeout(function(){ el.textContent = msgs[mi % msgs.length]; el.style.opacity = '1'; mi++; }, 160); } }, 2530); }
 window.setLanguage = function(lang){
   window.currentLang = lang === "en" ? "en" : "ro";
   localStorage.setItem(LANG_KEY, window.currentLang);
@@ -505,7 +505,7 @@ window._loadLiveImage = function(base64, mimeType) {
     if (zone) zone.classList.add("has-image");
     if (hint) hint.innerHTML = '<img src="' + dataUrl + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1A1A1A;">';
     var banner = document.getElementById("newPhotoBanner");
-    if (banner) { banner.classList.add("visible"); setTimeout(function(){ banner.classList.remove("visible"); }, 3800); }
+    if (banner) { banner.classList.add("visible"); setTimeout(function(){ banner.classList.remove("visible"); }, 2530); }
     var btn = document.getElementById("btnGenerate");
     if (btn) btn.disabled = false;
     setTimeout(window.analyzeImage, 800);
