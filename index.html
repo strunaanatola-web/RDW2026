@@ -134,9 +134,10 @@ body { font-family: 'Barlow', sans-serif; background: var(--paper); color: var(-
 .live-banner {
   display: none; background: #F0F7EB; border-left: 1px solid #C8E0B4;
   padding: 5px 20px; align-items: center; gap: 12px; flex-wrap: nowrap;
-  flex: 1; overflow: hidden;
+  flex: 0 1 auto; overflow: hidden;
+  max-width: calc(100vw - 520px);
 }
-.live-banner.visible { display: flex; max-width: calc(100% - 250px); flex: 0 1 calc(100% - 250px); }
+.live-banner.visible { display: flex; max-width: calc(100vw - 620px); flex: 0 1 calc(100vw - 620px); margin-right: 0; }
 .live-status { font-size: 10px; color: var(--green); letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; }
 .live-banner-text { font-size: 11px; color: #3B6D11; font-weight: 500; }
 .live-counter { font-size: 10px; color: var(--muted); margin-left: auto; }
@@ -248,11 +249,11 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
 .arch-sp{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px;gap:14px}
 .arch-sp div:first-child{width:26px;height:26px;border:2px solid #dedede;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite}
 .arch-sp div:last-child{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#999}
-#btnArch{display:block;width:100%;padding:13px;border:1px solid var(--ink);background:var(--ink);color:white;font-family:Barlow,sans-serif;font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:10px}#btnArch:hover{background:transparent;color:var(--ink)}.qr-block{text-align:center;padding:4px 0 24px;margin-bottom:18px;border-bottom:1px solid var(--rule)}.qr-block img{width:165px;height:165px;display:block;margin:0 auto}.qr-caption{font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:#aaa;margin-top:7px}
+#btnArch{display:block;width:100%;height:46px;padding:0 8px;border:1px solid var(--ink);background:var(--ink);color:white;font-family:Barlow,sans-serif;font-size:9px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:clip;line-height:44px;text-align:center}#btnArch:hover{background:transparent;color:var(--ink)}.qr-block{text-align:center;padding:4px 0 24px;margin-bottom:18px;border-bottom:1px solid var(--rule)}.qr-block img{width:165px;height:165px;display:block;margin:0 auto}.qr-caption{font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:#aaa;margin-top:7px}
 
 /* ── LANGUAGE SWITCH ── */
 .lang-switch {
-  position: absolute; top: 92px; right: 48px; z-index: 120;
+  position: absolute; top: 96px; right: 40px; z-index: 180;
   display: inline-flex; border: 1px solid var(--rule); background: rgba(255,255,255,0.96);
   backdrop-filter: blur(4px); font-family: 'Barlow', sans-serif;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
@@ -288,7 +289,7 @@ var I18N = {
     arch_style: "Stil arhitectural", keep_style: "Păstrează stilul", contemporary: "Contemporan european", traditional: "Tradițional românesc", minimalist: "Minimalist / Nordic", mediterranean: "Mediteranean", artnouveau: "Art Nouveau", brutalist: "Brutalist", artdeco: "Art Deco", moorish: "Islamic / Moorish", japanese: "Japonez", metabolism: "Metabolism", constructivist: "Constructivist", utopian_green: "Verde utopic",
     intensity: "Intensitate", generate: "Generează", generating: "Se generează...", generate_again: "Generează din nou", generated_image: "Imagine generată", result_here: "Rezultatul va apărea aici", generated: "Generat", download: "⬇ Descarcă", save_drive: "☁ Salvează Drive", scan_upload: "Scanați pentru a încărca foto",
     extra_details: "Detalii suplimentare", extra_examples: "Ex: «păstrează culoarea roșie a fațadei», «adaugă balcoane cu flori»", ai_analysis_prompt: "Analiză AI — Prompt generare", analyzing_image: "Se analizează imaginea...", reanalyze: "Reanalizează", apply_hint: "↑ Click pe caseta verde pentru a copia PROMPT GENERARE în câmpul de instrucțiuni de mai jos", extra_placeholder: "Adaugă instrucțiuni specifice suplimentare...", prompt_hint: "Promptul de bază se trimite automat. Câmpul de mai sus adaugă instrucțiuni personalizate.",
-    loading_analyze: "Familiarity is a kind of blindness.", loading_style: "At some point, it became invisible.", loading_facades: "The city was always there.", loading_render: "Contrast forces the eye to look again.", loading_new_city: "You are not seeing a new city.", loading_old_city: "You are seeing the old one for the first time.", error: "Eroare", no_image: "Încarcă mai întâi o imagine.", waiting_photo: "Aștept fotografie...", waiting_sub: "Când un vizitator uploadează prin Google Form,<br>fotografia apare automat aici", timeout_error: "Timeout sau oprit. Încearcă din nou.",
+    loading_analyze: "Familiaritatea este o formă de orbire.", loading_style: "La un moment dat, a devenit invizibil.", loading_facades: "Orașul era mereu acolo.", loading_render: "Contrastul obligă privirea să se întoarcă.", loading_new_city: "Nu vezi un oraș nou.", loading_old_city: "Îl vezi pe cel vechi pentru prima dată.", error: "Eroare", no_image: "Încarcă mai întâi o imagine.", waiting_photo: "Aștept fotografie...", waiting_sub: "Când un vizitator uploadează prin Google Form,<br>fotografia apare automat aici", timeout_error: "Timeout sau oprit. Încearcă din nou.",
     prompt_analysis_format: "ANALIZA: [2-3 sentences in Romanian describing: building type, architectural style, current materials, condition, key elements visible]"
   },
   en: {
@@ -310,7 +311,7 @@ var I18N = {
 function tr(key){ return (I18N[window.currentLang] && I18N[window.currentLang][key]) || I18N.ro[key] || key; }
 function curatorMessages(){ return [tr("loading_analyze"), tr("loading_style"), tr("loading_facades"), tr("loading_render"), tr("loading_new_city"), tr("loading_old_city")]; }
 function curatorLoadingHtml(id){ return '<div class="loading-overlay"><div class="spinner"></div><div class="loading-text" id="' + (id || 'loadingText') + '">' + curatorMessages()[0] + '</div></div>'; }
-function startCuratorTextLoop(elId){ var msgs = curatorMessages(); var mi = 1; return setInterval(function(){ var el = document.getElementById(elId); if(el){ el.style.opacity = '0'; setTimeout(function(){ el.textContent = msgs[mi % msgs.length]; el.style.opacity = '1'; mi++; }, 160); } }, 2850); }
+function startCuratorTextLoop(elId){ var msgs = curatorMessages(); var mi = 1; return setInterval(function(){ var el = document.getElementById(elId); if(el){ el.style.opacity = '0'; setTimeout(function(){ el.textContent = msgs[mi % msgs.length]; el.style.opacity = '1'; mi++; }, 160); } }, 5700); }
 window.setLanguage = function(lang){
   window.currentLang = lang === "en" ? "en" : "ro";
   localStorage.setItem(LANG_KEY, window.currentLang);
@@ -497,7 +498,7 @@ window._loadLiveImage = function(base64, mimeType) {
     if (zone) zone.classList.add("has-image");
     if (hint) hint.innerHTML = '<img src="' + dataUrl + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1A1A1A;">';
     var banner = document.getElementById("newPhotoBanner");
-    if (banner) { banner.classList.add("visible"); setTimeout(function(){ banner.classList.remove("visible"); }, 4000); }
+    if (banner) { banner.classList.add("visible"); setTimeout(function(){ banner.classList.remove("visible"); }, 5700); }
     var btn = document.getElementById("btnGenerate");
     if (btn) btn.disabled = false;
     setTimeout(window.analyzeImage, 800);
@@ -1190,12 +1191,12 @@ function doArchFetch(){
 
 
 <!-- MODE TABS + LIVE BANNER inline -->
-<div style="display:flex;align-items:stretch;border-bottom:1px solid var(--rule);">
+<div style="display:flex;align-items:stretch;border-bottom:1px solid var(--rule);padding-right:300px;">
   <div class="mode-tabs">
     <div class="mode-tab active" id="tabManual" onclick="switchMode('manual')" data-i18n="upload_image">Încarcă imagine</div>
     <div class="mode-tab" id="tabLive" onclick="toggleLiveMode()">
       <span class="live-dot" id="liveDot"></span>
-      Live Event
+      <span data-i18n="live">Live Event</span>
     </div>
   </div>
   <div class="live-banner" id="liveBanner">
