@@ -137,7 +137,9 @@ body { font-family: 'Barlow', sans-serif; background: var(--paper); color: var(-
   flex: 0 1 auto; overflow: hidden;
   max-width: calc(100vw - 520px);
 }
-.live-banner.visible { display: flex; max-width: calc(100vw - 620px); flex: 0 1 calc(100vw - 620px); margin-right: 0; }
+.live-banner.visible { display: none; }
+.mode-tab.live-active { color: var(--green); border-bottom-color: var(--green); background: #F0F7EB; }
+.mode-tab.live-active .live-dot { background: var(--green); }
 .live-status { font-size: 10px; color: var(--green); letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; }
 .live-banner-text { font-size: 11px; color: #3B6D11; font-weight: 500; }
 .live-counter { font-size: 10px; color: var(--muted); margin-left: auto; }
@@ -199,7 +201,7 @@ body { font-family: 'Barlow', sans-serif; background: var(--paper); color: var(-
 .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.93); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; }
 .spinner { width: 24px; height: 24px; border: 1.5px solid var(--rule); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 14px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 16px; letter-spacing: 0.02em; text-transform: none; color: var(--ink); font-weight: 400; line-height: 1.55; text-align: center; max-width: 420px; padding: 0 24px; transition: opacity 0.35s ease; }
+.loading-text { font-size: 24px; letter-spacing: 0.02em; text-transform: none; color: var(--ink); font-weight: 400; line-height: 1.55; text-align: center; max-width: 420px; padding: 0 24px; transition: opacity 0.35s ease; }
 .loading-sub { font-size: 9px; color: #BBBBBB; margin-top: 6px; }
 .ba-labels { display: none; justify-content: space-between; margin-top: 8px; }
 .ba-labels.visible { display: flex; }
@@ -249,7 +251,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
 .arch-sp{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px;gap:14px}
 .arch-sp div:first-child{width:26px;height:26px;border:2px solid #dedede;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite}
 .arch-sp div:last-child{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#999}
-#btnArch{display:block;width:100%;height:46px;padding:0 8px;border:1px solid var(--ink);background:var(--ink);color:white;font-family:Barlow,sans-serif;font-size:9px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:clip;line-height:44px;text-align:center}#btnArch:hover{background:transparent;color:var(--ink)}.qr-block{text-align:center;padding:4px 0 24px;margin-bottom:18px;border-bottom:1px solid var(--rule)}.qr-block img{width:165px;height:165px;display:block;margin:0 auto}.qr-caption{font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:#aaa;margin-top:7px}
+#btnArch{display:block;width:100%;height:46px;padding:0 8px;border:1px solid var(--ink);background:var(--ink);color:white;font-family:Barlow,sans-serif;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:clip;line-height:44px;text-align:center}#btnArch:hover{background:transparent;color:var(--ink)}.qr-block{text-align:center;padding:4px 0 24px;margin-bottom:18px;border-bottom:1px solid var(--rule)}.qr-block img{width:165px;height:165px;display:block;margin:0 auto}.qr-caption{font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:#aaa;margin-top:7px}
 
 /* ── LANGUAGE SWITCH ── */
 .lang-switch {
@@ -265,7 +267,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
 .lang-switch button.active { background: var(--ink); color: #fff; }
 .lang-switch button:hover:not(.active) { color: var(--ink); }
 .header-subtitle { font-size: 13px; font-weight: 300; color: var(--muted); margin-top: 4px; letter-spacing: 0.02em; line-height: 1.35; }
-.arch-loading-text { font-size: 16px; letter-spacing: 0.02em; text-transform: none; color: var(--ink); font-weight: 400; line-height: 1.55; text-align: center; max-width: 420px; padding: 0 24px; }
+.arch-loading-text { font-size: 24px; letter-spacing: 0.02em; text-transform: none; color: var(--ink); font-weight: 400; line-height: 1.55; text-align: center; max-width: 420px; padding: 0 24px; }
 
 </style>
 
@@ -420,6 +422,7 @@ window.switchMode = function(mode) {
   var leftLabel = document.getElementById("leftPanelLabel");
   if (tabManual) tabManual.classList.toggle("active", mode === "manual");
   if (tabLive) tabLive.classList.toggle("active", mode === "live");
+  if (tabLive) tabLive.classList.toggle("live-active", !!window.liveMode);
   if (liveStartBlock) liveStartBlock.style.display = mode === "live" ? "block" : "none";
   if (leftLabel) leftLabel.textContent = mode === "live" ? tr("form_photo") : tr("original_image");
   if (mode === "manual" && window.liveMode && typeof stopLive === "function") stopLive();
@@ -432,6 +435,8 @@ window.stopLive = function() {
   var banner = document.getElementById("liveBanner");
   var dot = document.getElementById("liveDot");
   if (banner) banner.classList.remove("visible");
+  var tabLive = document.getElementById("tabLive");
+  if (tabLive) tabLive.classList.remove("live-active", "active");
   if (dot) dot.classList.remove("pulse");
 };
 
@@ -445,7 +450,9 @@ window.startLive = function() {
   window.liveMode = true;
   var banner = document.getElementById("liveBanner");
   var dot = document.getElementById("liveDot");
-  if (banner) banner.classList.add("visible");
+  if (banner) banner.classList.remove("visible");
+  var tabLive = document.getElementById("tabLive");
+  if (tabLive) tabLive.classList.add("live-active", "active");
   if (dot) dot.classList.add("pulse");
   // Show waiting state
   var zone = document.getElementById("uploadZone");
@@ -1191,18 +1198,13 @@ function doArchFetch(){
 
 
 <!-- MODE TABS + LIVE BANNER inline -->
-<div style="display:flex;align-items:stretch;border-bottom:1px solid var(--rule);padding-right:300px;">
+<div style="display:flex;align-items:stretch;border-bottom:1px solid var(--rule);padding-right:0;">
   <div class="mode-tabs">
     <div class="mode-tab active" id="tabManual" onclick="switchMode('manual')" data-i18n="upload_image">Încarcă imagine</div>
     <div class="mode-tab" id="tabLive" onclick="toggleLiveMode()">
       <span class="live-dot" id="liveDot"></span>
       <span data-i18n="live">Live Event</span>
     </div>
-  </div>
-  <div class="live-banner" id="liveBanner">
-    <span class="live-status">● Live</span>
-    <span class="live-counter" id="liveCounter" data-i18n="checked_now">Verificat acum 0s</span>
-    <button class="btn-stop-live" onclick="stopLive()" data-i18n="stop">Oprește</button>
   </div>
 </div>
 
