@@ -256,9 +256,8 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
 /* ── LANGUAGE SWITCH ── */
 .lang-switch {
   position: absolute;
-  top: 134px;
+  top: 108px;
   right: 40px;
-  transform: translateY(-50%);
   z-index: 180;
   display: inline-flex;
   border: 1px solid var(--rule);
@@ -341,7 +340,7 @@ window.saveCredentials = function() {
   try {
     var provider = (document.getElementById("setupProvider") || {}).value || "gemini";
     var model = (document.getElementById("setupModel") || {}).value || "gemini-2.5-flash-image";
-    var scriptUrl = ((document.getElementById("setupScriptUrl") || {}).value || "").trim();
+    var scriptUrl = "";
     var token = ((document.getElementById("setupToken") || {}).value || "").trim();
 
     // API keys are no longer stored in the browser. They must be set in Netlify Environment Variables.
@@ -374,8 +373,8 @@ window.saveCredentials = function() {
       };
       modelStatusVal.textContent = modelNames[model] || model;
     }
-    if (liveStatusDot) liveStatusDot.className = scriptUrl ? "status-dot ok" : "status-dot warn";
-    if (liveStatusVal) liveStatusVal.textContent = scriptUrl ? "configurat" : "neconfigurat";
+    if (liveStatusDot) liveStatusDot.className = "status-dot ok";
+    if (liveStatusVal) liveStatusVal.textContent = "backend";
 
     if (typeof applyCredentials === "function") {
       applyCredentials({ provider: provider, model: model, scriptUrl: scriptUrl, token: token });
@@ -397,7 +396,7 @@ window.openSettings = function() {
   try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
   if (document.getElementById("setupProvider")) document.getElementById("setupProvider").value = creds.provider || "gemini";
   if (document.getElementById("setupModel")) document.getElementById("setupModel").value = creds.model || "gemini-2.5-flash-image";
-  if (document.getElementById("setupScriptUrl")) document.getElementById("setupScriptUrl").value = creds.scriptUrl || "";
+
   if (document.getElementById("setupToken")) document.getElementById("setupToken").value = creds.token || "";
   var overlay = document.getElementById("modalOverlay");
   if (overlay) overlay.style.display = "flex";
