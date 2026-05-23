@@ -78,61 +78,68 @@ async function generateWithGemini(options) {
   };
 }
 
-async function generateWithOpenAI(options) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("Lipseste OPENAI_API_KEY.");
+const ALLOWED_STABILITY_MODELS = new Set([
+  "stable-image-control-structure"
+]);
+
+function normalizeStabilityModel(model) {
+  const requested = String(model || "stable-image-control-structure").trim();
+  return ALLOWED_STABILITY_MODELS.has(requested) ? requested : "stable-image-control-structure";
+}
+
+async function generateWithStability(options) {
+  const apiKey = process.env.STABILITY_API_KEY;
+  if (!apiKey) throw new Error("Lipseste STABILITY_API_KEY.");
 
   const { prompt, imageBase64, mimeType } = options;
+  const model = normalizeStabilityModel(options.model);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 55000);
 
-  console.log("[generate-image] OpenAI start length=" + imageBase64.length);
+  console.log("[generate-image] Stability start model=" + model + " length=" + imageBase64.length);
 
   const imageBuffer = Buffer.from(imageBase64, "base64");
   const blob = new Blob([imageBuffer], { type: mimeType || "image/jpeg" });
   const formData = new FormData();
-  formData.append("model", "gpt-image-1");
-  formData.append("prompt", prompt);
-  formData.append("size", "1024x1024");
   formData.append("image", blob, "building.jpg");
+  formData.append("prompt", prompt);
+  formData.append("control_strength", String(options.controlStrength || process.env.STABILITY_CONTROL_STRENGTH || "0.65"));
+  formData.append("output_format", "png");
 
   let response;
   try {
-    response = await fetch("https://api.openai.com/v1/images/edits", {
+    response = await fetch("https://api.stability.ai/v2beta/stable-image/control/structure", {
       method: "POST",
-      headers: { "Authorization": "Bearer " + apiKey },
+      headers: {
+        "Authorization": "Bearer " + apiKey,
+        "Accept": "image/*"
+      },
       body: formData,
       signal: controller.signal
     });
   } catch (err) {
     clearTimeout(timeout);
-    if (err.name === "AbortError") throw new Error("Timeout OpenAI");
+    if (err.name === "AbortError") throw new Error("Timeout Stability AI");
     throw err;
   }
   clearTimeout(timeout);
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.error) {
-    console.log("[generate-image] OpenAI ERROR " + JSON.stringify(data).slice(0, 300));
-    throw new Error(data.error?.message || "OpenAI error " + response.status);
+  if (!response.ok) {
+    const errText = await response.text().catch(() => "");
+    console.log("[generate-image] Stability ERROR " + errText.slice(0, 300));
+    throw new Error(errText || "Stability AI error " + response.status);
   }
 
-  const b64 = data.data?.[0]?.b64_json;
-  if (!b64) {
-    // openai may return url instead of b64
-    const url = data.data?.[0]?.url;
-    if (url) {
-      console.log("[generate-image] OpenAI returned URL, fetching...");
-      const imgResp = await fetch(url);
-      const imgBuf = await imgResp.arrayBuffer();
-      const imgB64 = Buffer.from(imgBuf).toString("base64");
-      return { image: imgB64, mimeType: "image/png", providerUsed: "openai", modelUsed: "gpt-image-1" };
-    }
-    throw new Error("OpenAI nu a returnat imagine.");
-  }
+  const imgBuf = await response.arrayBuffer();
+  const imgB64 = Buffer.from(imgBuf).toString("base64");
 
-  console.log("[generate-image] OpenAI success");
-  return { image: b64, mimeType: "image/png", providerUsed: "openai", modelUsed: "gpt-image-1" };
+  console.log("[generate-image] Stability success");
+  return {
+    image: imgB64,
+    mimeType: "image/png",
+    providerUsed: "stability",
+    modelUsed: model
+  };
 }
 
 exports.handler = async function(event) {
@@ -148,17 +155,12 @@ exports.handler = async function(event) {
     console.log("[generate-image] provider=" + selectedProvider);
 
     let result;
-    if (selectedProvider === "openai") {
-      result = await generateWithOpenAI({ prompt, imageBase64, mimeType });
+    if (selectedProvider === "stability") {
+      result = await generateWithStability({ prompt, imageBase64, mimeType, model });
+    } else if (selectedProvider === "gemini") {
+      result = await generateWithGemini({ prompt, imageBase64, mimeType, model });
     } else {
-      try {
-        result = await generateWithGemini({ prompt, imageBase64, mimeType, model });
-      } catch (geminiErr) {
-        console.log("[generate-image] Gemini failed: " + geminiErr.message + " — OpenAI fallback");
-        if (!process.env.OPENAI_API_KEY) throw geminiErr;
-        result = await generateWithOpenAI({ prompt, imageBase64, mimeType });
-        result.fallback = true;
-      }
+      return json(400, { error: "Provider invalid. Folosește gemini sau stability." });
     }
 
     return json(200, result);
