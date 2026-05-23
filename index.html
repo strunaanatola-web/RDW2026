@@ -258,11 +258,13 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
   position: absolute;
   top: 108px;
   right: 40px;
+  transform: translateY(-50%);
   z-index: 180;
   display: inline-flex;
   border: 1px solid var(--rule);
   background: rgba(255,255,255,0.96);
-  backdrop-filter: blur(4px); font-family: 'Barlow', sans-serif;
+  backdrop-filter: blur(4px);
+  font-family: 'Barlow', sans-serif;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 .lang-switch button {
@@ -396,7 +398,6 @@ window.openSettings = function() {
   try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
   if (document.getElementById("setupProvider")) document.getElementById("setupProvider").value = creds.provider || "gemini";
   if (document.getElementById("setupModel")) document.getElementById("setupModel").value = creds.model || "gemini-2.5-flash-image";
-
   if (document.getElementById("setupToken")) document.getElementById("setupToken").value = creds.token || "";
   var overlay = document.getElementById("modalOverlay");
   if (overlay) overlay.style.display = "flex";
@@ -1168,13 +1169,6 @@ function doArchFetch(){
         <option value="gemini-3-pro-image-preview">Nano Banana Pro — Gemini 3 Pro Image Preview</option>
         <option value="stable-image-control-structure">Stability AI — Structure Control</option>
       </select>
-    </div>
-
-    <div class="modal-section-title"><span data-i18n="live_event">Live Event — Google Form</span> <span style="font-weight:300;font-size:9px">(<span data-i18n="optional">opțional</span>)</span></div>
-    <div class="modal-note" data-i18n="live_note">Completează doar dacă vrei să folosești modul Live Event cu Google Form.</div>
-    <div class="modal-field">
-      <label>Apps Script Web App URL</label>
-      <input type="text" id="setupScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
     </div>
     <div class="modal-field">
       <label data-i18n="password">Parolă</label>
