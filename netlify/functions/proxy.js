@@ -1,8 +1,8 @@
 import https from "https";
 import http from "http";
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwf0L0OhlOLrvokZYsOzQwF4FhTS8fO799cCnQ__vqSBVJHITlfpro1KmE1CkTbFEyT/exec";
-const SECRET_TOKEN = "opm-RDW-2026";
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
+const SECRET_TOKEN = process.env.LIVE_EVENT_TOKEN || "opm-RDW-2026";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +19,10 @@ export async function handler(event, context) {
   const token = event.queryStringParameters && event.queryStringParameters.token;
   if (token !== SECRET_TOKEN) {
     return { statusCode: 403, headers: CORS, body: JSON.stringify({ error: "Unauthorized" }) };
+  }
+
+  if (!APPS_SCRIPT_URL) {
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "Lipsește APPS_SCRIPT_URL în Netlify Environment Variables." }) };
   }
 
   try {
