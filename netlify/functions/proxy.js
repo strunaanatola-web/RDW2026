@@ -1,12 +1,15 @@
 import https from "https";
 import http from "http";
+import { checkAuth } from "./_auth.js";
 
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
-const SECRET_TOKEN = process.env.LIVE_EVENT_TOKEN || "opm-RDW-2026";
+// Token sent to Apps Script for ITS OWN auth check.
+// This is separate from APP_PASSWORD (which gates the Netlify function itself).
+const APPS_SCRIPT_TOKEN = process.env.APPS_SCRIPT_TOKEN;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-App-Password",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Content-Type": "application/json"
 };
@@ -16,9 +19,10 @@ export async function handler(event, context) {
     return { statusCode: 200, headers: CORS, body: "" };
   }
 
-  const token = event.queryStringParameters && event.queryStringParameters.token;
-  if (token !== SECRET_TOKEN) {
-    return { statusCode: 403, headers: CORS, body: JSON.stringify({ error: "Unauthorized" }) };
+  // Auth gate
+  const auth = checkAuth(event);
+  if (!auth.ok) {
+    return { statusCode: auth.status, headers: CORS, body: JSON.stringify({ error: auth.error }) };
   }
 
   if (!APPS_SCRIPT_URL) {
@@ -26,11 +30,14 @@ export async function handler(event, context) {
   }
 
   try {
-    const url = APPS_SCRIPT_URL + "?action=getLatest&token=" + encodeURIComponent(SECRET_TOKEN);
+    let url = APPS_SCRIPT_URL + "?action=getLatest";
+    if (APPS_SCRIPT_TOKEN) {
+      url += "&token=" + encodeURIComponent(APPS_SCRIPT_TOKEN);
+    }
     const data = await fetchWithRedirects(url, 0);
     return { statusCode: 200, headers: CORS, body: JSON.stringify(data) };
   } catch(err) {
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 502, headers: CORS, body: JSON.stringify({ error: err.message }) };
   }
 };
 
@@ -62,7 +69,7 @@ function fetchWithRedirects(url, count) {
       });
     });
     req.on("error", reject);
-    req.setTimeout(25000, () => { req.destroy(); reject(new Error("Timeout")); });
+    req.setTimeout(12000, () => { req.destroy(); reject(new Error("Timeout")); });
     req.end();
   });
 }
