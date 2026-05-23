@@ -1,6 +1,6 @@
-import https from "https";
-import http from "http";
-import { checkAuth } from "./_auth.js";
+const https = require("https");
+const http = require("http");
+const { checkAuth } = require("./_auth.js");
 
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
 // Token sent to Apps Script for ITS OWN auth check.
@@ -14,7 +14,7 @@ const CORS = {
   "Content-Type": "application/json"
 };
 
-export async function handler(event, context) {
+exports.handler = async function(event, context) {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: CORS, body: "" };
   }
