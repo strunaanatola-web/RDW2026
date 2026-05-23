@@ -1,7 +1,9 @@
+const { checkAuth } = require("./_auth.js");
+
 const CORS_HEADERS = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-App-Password",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
@@ -28,7 +30,7 @@ IMPORTANT:
 EXACT FORMAT:
 
 TITLE
-[Real name of the object, if recognizable; otherwise “Object not reliably identified”] — [a metaphor or short description of its essence]
+[Real name of the object, if recognizable; otherwise "Object not reliably identified"] — [a metaphor or short description of its essence]
 
 STYLE AND CONTEXT
 [Identify the style and place it in a period. Add a brief international analogy if relevant.]
@@ -63,7 +65,7 @@ IMPORTANT:
 FORMAT EXACT:
 
 TITLU
-[Numele obiectivului real, dacă este recognoscibil; altfel „Obiectiv neidentificat sigur”] — [o metaforă sau descriere scurtă a esenței sale]
+[Numele obiectivului real, dacă este recognoscibil; altfel „Obiectiv neidentificat sigur"] — [o metaforă sau descriere scurtă a esenței sale]
 
 STILUL ȘI CONTEXTUL
 [Identifică stilul și plasează-l într-o epocă. Fă o scurtă analogie internațională, dacă este relevantă.]
@@ -85,6 +87,10 @@ exports.handler = async function(event) {
   try {
     if (event.httpMethod === "OPTIONS") return json(200, {});
     if (event.httpMethod !== "POST") return json(405, { error: "Method not allowed" });
+
+    // Auth gate
+    const auth = checkAuth(event);
+    if (!auth.ok) return json(auth.status, { error: auth.error });
 
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
     if (!apiKey) return json(500, { error: "Lipsește ANTHROPIC_API_KEY în Netlify Environment Variables." });
