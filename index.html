@@ -338,24 +338,66 @@ window.setLanguage = function(lang){
 };
 
 
-window.saveCredentials = function() {
+// Helper: show error in modal
+window._showModalError = function(msg) {
+  var err = document.getElementById("modalError");
+  if (err) { err.textContent = msg; err.style.display = "block"; }
+};
+
+// Helper: clear session and reopen modal (used on 401 responses)
+window._handleAuthFailure = function() {
+  sessionStorage.removeItem(STORAGE_KEY);
+  var overlay = document.getElementById("modalOverlay");
+  if (overlay) overlay.style.display = "flex";
+  window._showModalError("Sesiunea a expirat sau parola a fost schimbata. Reintrodu parola.");
+};
+
+window.saveCredentials = async function() {
+  var saveBtn = document.getElementById("modalSaveBtn");
+  var originalLabel = saveBtn ? saveBtn.textContent : "";
   try {
     var provider = (document.getElementById("setupProvider") || {}).value || "gemini";
     var model = (document.getElementById("setupModel") || {}).value || "gemini-2.5-flash-image";
     var scriptUrl = "";
     var token = ((document.getElementById("setupToken") || {}).value || "").trim();
 
-    // API keys are no longer stored in the browser. They must be set in Netlify Environment Variables.
-    if (!token || token.trim() !== "opm-RDW-2026") {
-      var err = document.getElementById("modalError");
-      if (err) { err.textContent = "Parola incorecta. Introdu parola corecta pentru acces."; err.style.display = "block"; }
+    if (!token) {
+      window._showModalError("Introdu parola.");
       return;
     }
+
+    // Verify the password against the backend BEFORE saving anything.
+    // The backend compares against APP_PASSWORD env var.
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "Se verifica..."; }
+
+    var resp = await fetch("/.netlify/functions/auth-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-App-Password": token }
+    });
+
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel || "Salveaza si intra in aplicatie"; }
+
+    if (!resp.ok) {
+      var data = await resp.json().catch(function(){ return {}; });
+      if (resp.status === 401) {
+        window._showModalError("Parola incorecta.");
+      } else if (resp.status === 500) {
+        window._showModalError(data.error || "Backend neconfigurat. Verifica APP_PASSWORD in Netlify Environment Variables.");
+      } else {
+        window._showModalError(data.error || ("Eroare " + resp.status));
+      }
+      return;
+    }
+
+    // Password is valid. Save and proceed.
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ provider: provider, model: model, scriptUrl: scriptUrl, token: token }));
-    
+
+    var errEl = document.getElementById("modalError");
+    if (errEl) { errEl.textContent = ""; errEl.style.display = "none"; }
+
     var overlay = document.getElementById("modalOverlay");
     if (overlay) overlay.style.display = "none";
-    
+
     var apiStatusDot = document.getElementById("apiStatusDot");
     var apiStatusVal = document.getElementById("apiStatusVal");
     var modelStatusDot = document.getElementById("modelStatusDot");
@@ -382,7 +424,8 @@ window.saveCredentials = function() {
       applyCredentials({ provider: provider, model: model, scriptUrl: scriptUrl, token: token });
     }
   } catch(e) {
-    alert("Eroare: " + e.message);
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel || "Salveaza si intra in aplicatie"; }
+    window._showModalError("Eroare: " + e.message);
   }
 };
 
@@ -399,8 +442,37 @@ window.openSettings = function() {
   if (document.getElementById("setupProvider")) document.getElementById("setupProvider").value = creds.provider || "gemini";
   if (document.getElementById("setupModel")) document.getElementById("setupModel").value = creds.model || "gemini-2.5-flash-image";
   if (document.getElementById("setupToken")) document.getElementById("setupToken").value = creds.token || "";
+  // Sync model dropdown options to current provider (problem #6 fix)
+  if (typeof window.syncModelOptions === "function") window.syncModelOptions();
   var overlay = document.getElementById("modalOverlay");
   if (overlay) overlay.style.display = "flex";
+};
+
+// Filter the model <select> based on the currently selected provider.
+// Problem #6: prevents nonsensical combinations like provider=stability + model=gemini-X.
+window.syncModelOptions = function() {
+  var providerEl = document.getElementById("setupProvider");
+  var modelEl = document.getElementById("setupModel");
+  if (!providerEl || !modelEl) return;
+  var provider = providerEl.value;
+  var firstVisible = null;
+  var currentValid = false;
+
+  Array.prototype.forEach.call(modelEl.options, function(opt) {
+    var match = opt.getAttribute("data-provider") === provider;
+    opt.hidden = !match;
+    opt.disabled = !match;
+    // Belt-and-suspenders for old browsers
+    opt.style.display = match ? "" : "none";
+    if (match) {
+      if (!firstVisible) firstVisible = opt.value;
+      if (opt.value === modelEl.value) currentValid = true;
+    }
+  });
+
+  if (!currentValid && firstVisible) {
+    modelEl.value = firstVisible;
+  }
 };
 
 // All onclick handlers - defined early, delegate to main script when ready
@@ -469,8 +541,13 @@ window.startLive = function() {
   // Start polling
   var secs = 0;
   window._pollInterval = setInterval(function() {
-    fetch("/.netlify/functions/proxy?token=" + encodeURIComponent(creds.token))
-      .then(function(r) { return r.json(); })
+    fetch("/.netlify/functions/proxy", {
+      headers: { "X-App-Password": creds.token || "" }
+    })
+      .then(function(r) {
+        if (r.status === 401) { window._handleAuthFailure(); throw new Error("Auth"); }
+        return r.json();
+      })
       .then(function(data) {
         if (data.fileId && data.fileId !== window._lastFileId && data.base64) {
           window._lastFileId = data.fileId;
@@ -566,14 +643,20 @@ window.analyzeImage = function() {
   var prompt = "You are an expert urban architect and AI image generation specialist. Analyze this photograph and generate a detailed, professional image generation prompt for urban transformation.\n\nRespond ONLY in this exact format:\n\n" + tr("prompt_analysis_format") + "\n\nPROMPT GENERARE: [Write a detailed English prompt for AI image generation, similar to professional Midjourney/Stable Diffusion prompts. Include: photorealistic style, specific materials to use (marble, glass, wood, steel etc), lighting description, what to keep from original, what to transform, colors, textures, atmosphere. Minimum 80 words. Be very specific about architectural details visible in the image.]";
   fetch("/.netlify/functions/prompt-analysis", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-App-Password": creds.token || ""
+    },
     body: JSON.stringify({
       imageBase64: window._uploadedImageB64,
       mimeType: window._uploadedMimeType || "image/jpeg",
       prompt: prompt,
       language: window.currentLang || "ro"
     })
-  }).then(function(r) { return r.json(); })
+  }).then(function(r) {
+      if (r.status === 401) { window._handleAuthFailure(); throw new Error("Auth"); }
+      return r.json();
+    })
     .then(function(data) {
       var text = data.text || data.analysis || "";
       var suggEl = document.getElementById("analysisSuggestion");
@@ -722,9 +805,15 @@ window.testModels = function() { alert("Cheile API sunt configurate în backend 
 
 
 window.generateImageSecure = async function(prompt, imgB64, mime, provider, model) {
+  var creds = {};
+  try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
+
   var response = await fetch("/.netlify/functions/generate-image", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-App-Password": creds.token || ""
+    },
     body: JSON.stringify({
       prompt: prompt,
       imageBase64: imgB64,
@@ -733,6 +822,11 @@ window.generateImageSecure = async function(prompt, imgB64, mime, provider, mode
       model: model || "gemini-2.5-flash-image"
     })
   });
+
+  if (response.status === 401) {
+    window._handleAuthFailure();
+    throw new Error("Parola invalida sau expirata.");
+  }
 
   var data = await response.json().catch(function(){ return {}; });
 
@@ -749,11 +843,12 @@ window.generateImageSecure = async function(prompt, imgB64, mime, provider, mode
 
 // Show modal on load if no credentials saved
 document.addEventListener("DOMContentLoaded", function() {
+  // No more client-side password check. The presence of a token is enough
+  // at this layer; the backend verifies the actual value via X-App-Password.
   try {
     var raw = sessionStorage.getItem(STORAGE_KEY);
     var creds = raw ? JSON.parse(raw) : null;
-    var APP_PW = "opm-RDW-2026";
-    var hasAccess = creds && creds.token && creds.token.trim() === APP_PW;
+    var hasAccess = creds && creds.token;
     if (!hasAccess) {
       var overlay = document.getElementById("modalOverlay");
       if (overlay) overlay.style.display = "flex";
@@ -762,6 +857,16 @@ document.addEventListener("DOMContentLoaded", function() {
     var overlay = document.getElementById("modalOverlay");
     if (overlay) overlay.style.display = "flex";
   }
+
+  // Hook up dynamic model dropdown filtering (problem #6)
+  var providerEl = document.getElementById("setupProvider");
+  if (providerEl) {
+    providerEl.addEventListener("change", function() {
+      if (typeof window.syncModelOptions === "function") window.syncModelOptions();
+    });
+  }
+  // Initial sync (after sessionStorage-driven values are set)
+  if (typeof window.syncModelOptions === "function") window.syncModelOptions();
 
   window.setLanguage(window.currentLang);
 
@@ -819,16 +924,10 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!imgB64) return;
 
       var provider = creds.provider || "gemini";
-      var MODEL_MAP = provider === "stability" ? {
-        "stable-image-control-structure": true
-      } : {
-        "gemini-2.5-flash-image": true,
-        "gemini-3.1-flash-image-preview": true,
-        "gemini-3-pro-image-preview": true
-      };
+      // UI now constrains model to be valid for the selected provider (syncModelOptions).
+      // Defensive default if creds.model is missing.
       var defaultModel = provider === "stability" ? "stable-image-control-structure" : "gemini-2.5-flash-image";
       var model = creds.model || defaultModel;
-      var effectiveModel = MODEL_MAP[model] ? model : defaultModel;
       
       // Build prompt
       var activeTags = window._activeTags || ["fatade"];
@@ -881,7 +980,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (dlBtn) dlBtn.style.display = "none";
       if (driveBtn) driveBtn.style.display = "none";
       if (baLabels) baLabels.classList.remove("visible");
-      if (resultBox) resultBox.innerHTML = curatorLoadingHtml('loadingText') + (effectiveModel !== model ? '<div class="loading-sub">Fallback: ' + defaultModel + '</div>' : '');
+      if (resultBox) resultBox.innerHTML = curatorLoadingHtml('loadingText');
 
       var interval = startCuratorTextLoop('loadingText');
 
@@ -892,7 +991,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       var requestPromise;
 
-      requestPromise = window.generateImageSecure(prompt, imgB64, imgMime, provider, effectiveModel)
+      requestPromise = window.generateImageSecure(prompt, imgB64, imgMime, provider, model)
         .then(function(genSrc) {
           clearTimeout(timeoutId);
           window._abortCtrl = null;
@@ -1097,9 +1196,14 @@ function archFormatText(t){
 }
 
 function doArchFetch(){
+  var creds = {};
+  try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
   fetch('/.netlify/functions/claude-analysis', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: {
+      'Content-Type': 'application/json',
+      'X-App-Password': creds.token || ''
+    },
     body: JSON.stringify({
       imageBase64: window._uploadedImageB64,
       mimeType: window._uploadedMimeType || 'image/jpeg',
@@ -1112,6 +1216,7 @@ function doArchFetch(){
         : 'Analizează această imagine ca un critic de arhitectură. IMPORTANT: scrie întregul răspuns doar în română, inclusiv titlul și toate paragrafele. Folosește exact aceste titluri de secțiuni: TITLU, STILUL ȘI CONTEXTUL, CE E STRUCTURAL INTERESANT, DETALIUL CARE MERITĂ ATENȚIE, CE SPUNE SPAȚIUL ÎN ANSAMBLU, REALITATEA URBANĂ.'
     })
   }).then(function(r){
+    if (r.status === 401) { window._handleAuthFailure(); throw new Error("Auth"); }
     return r.json().then(function(d){ return {ok: r.ok, data: d}; });
   }).then(function(rd){
     _aLoad = false;
@@ -1164,10 +1269,10 @@ function doArchFetch(){
     <div class="modal-field">
       <label data-i18n="generation_model">Model de generare</label>
       <select id="setupModel">
-        <option value="gemini-2.5-flash-image">Nano Banana — Gemini 2.5 Flash Image</option>
-        <option value="gemini-3.1-flash-image-preview">Nano Banana 2 — Gemini 3.1 Flash Image Preview</option>
-        <option value="gemini-3-pro-image-preview">Nano Banana Pro — Gemini 3 Pro Image Preview</option>
-        <option value="stable-image-control-structure">Stability AI — Structure Control</option>
+        <option value="gemini-2.5-flash-image" data-provider="gemini">Nano Banana — Gemini 2.5 Flash Image</option>
+        <option value="gemini-3.1-flash-image-preview" data-provider="gemini">Nano Banana 2 — Gemini 3.1 Flash Image Preview</option>
+        <option value="gemini-3-pro-image-preview" data-provider="gemini">Nano Banana Pro — Gemini 3 Pro Image Preview</option>
+        <option value="stable-image-control-structure" data-provider="stability">Stability AI — Structure Control</option>
       </select>
     </div>
     <div class="modal-field">
