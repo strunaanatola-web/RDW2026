@@ -255,8 +255,14 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px;
 
 /* ── LANGUAGE SWITCH ── */
 .lang-switch {
-  position: absolute; top: 96px; right: 40px; z-index: 180;
-  display: inline-flex; border: 1px solid var(--rule); background: rgba(255,255,255,0.96);
+  position: absolute;
+  top: 134px;
+  right: 40px;
+  transform: translateY(-50%);
+  z-index: 180;
+  display: inline-flex;
+  border: 1px solid var(--rule);
+  background: rgba(255,255,255,0.96);
   backdrop-filter: blur(4px); font-family: 'Barlow', sans-serif;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
@@ -444,7 +450,7 @@ window.stopLive = function() {
 window.startLive = function() {
   var creds = {};
   try { creds = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) {}
-  if (!creds.scriptUrl || !creds.token) {
+  if (!creds.token) {
     window.openSettings();
     return;
   }
