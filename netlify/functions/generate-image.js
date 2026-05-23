@@ -1,7 +1,9 @@
+const { checkAuth } = require("./_auth.js");
+
 const CORS_HEADERS = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-App-Password",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
@@ -146,6 +148,10 @@ exports.handler = async function(event) {
   try {
     if (event.httpMethod === "OPTIONS") return json(200, {});
     if (event.httpMethod !== "POST") return json(405, { error: "Method not allowed" });
+
+    // Auth gate: rejects any request without correct X-App-Password.
+    const auth = checkAuth(event);
+    if (!auth.ok) return json(auth.status, { error: auth.error });
 
     const body = JSON.parse(event.body || "{}");
     const { prompt, imageBase64, mimeType, provider, model } = body;
