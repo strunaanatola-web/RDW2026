@@ -1,7 +1,9 @@
+const { checkAuth } = require("./_auth.js");
+
 const CORS_HEADERS = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-App-Password",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
@@ -14,7 +16,11 @@ exports.handler = async function(event) {
     if (event.httpMethod === "OPTIONS") return json(200, {});
     if (event.httpMethod !== "POST") return json(405, { error: "Method not allowed" });
 
-    const apiKey = process.env.CLAUDE_API_KEY;
+    // Auth gate
+    const auth = checkAuth(event);
+    if (!auth.ok) return json(auth.status, { error: auth.error });
+
+    const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return json(500, { error: "Lipsește CLAUDE_API_KEY în Netlify Environment Variables." });
 
     const body = JSON.parse(event.body || "{}");
