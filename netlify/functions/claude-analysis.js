@@ -11,11 +11,27 @@ function json(statusCode, body) {
   return { statusCode, headers: CORS_HEADERS, body: JSON.stringify(body) };
 }
 
-function buildPrompt(language) {
+function buildPrompt(language, context = {}) {
+  const buildingHint = (context.buildingHint || '').trim();
+  const bucharestHint = !!context.bucharestHint;
+  const contextTextEn = [
+    bucharestHint ? 'The user indicated that the building is located in Bucharest, Romania.' : '',
+    buildingHint ? `The user provided this possible building/location hint: "${buildingHint}".` : ''
+  ].filter(Boolean).join('\n');
+  const contextTextRo = [
+    bucharestHint ? 'Utilizatorul a indicat că această clădire se află în București, România.' : '',
+    buildingHint ? `Utilizatorul a oferit acest indiciu posibil despre clădire/locație: "${buildingHint}".` : ''
+  ].filter(Boolean).join('\n');
+
   if (language === "en") {
     return `Role: You are an architect with the eye of a historian and urban critic, with deep knowledge of Romanian and European architecture.
 
 Your task is to analyze the photograph of a building or urban space. If you recognize the landmark, name it. If you are not sure, do not invent: write that the object cannot be reliably identified from the image.
+
+${contextTextEn ? `Additional user-provided context:
+${contextTextEn}
+
+Use this context as a clue, not as absolute truth. If the image does not visually support the hint, say that the identification cannot be visually confirmed.` : ''}
 
 Write the entire analysis in English, in a sharp, technical but understandable style. Avoid advertising clichés. Do not praise the building; explain it. Be specific about what is visible in the image.
 
@@ -51,6 +67,11 @@ URBAN REALITY
   return `Rol: Ești un arhitect cu ochi de istoric și critic urban, cu cunoștințe profunde despre arhitectura românească și europeană.
 
 Sarcina ta este să analizezi fotografia unei clădiri sau a unui spațiu urban. Dacă recunoști obiectivul, spune numele lui. Dacă nu ești sigur, nu inventa: scrie că obiectivul nu poate fi identificat sigur din imagine.
+
+${contextTextRo ? `Context suplimentar oferit de utilizator:
+${contextTextRo}
+
+Folosește acest context ca indiciu, nu ca adevăr absolut. Dacă imaginea nu confirmă vizual indiciul, spune explicit că identificarea nu poate fi confirmată vizual.` : ''}
 
 Scrie analiza în română, într-un stil percutant, tehnic, dar ușor de înțeles. Evită clișeele publicitare. Nu lăuda clădirea; explic-o. Fii specific la ce vezi în imagine.
 
@@ -99,11 +120,13 @@ exports.handler = async function(event) {
     const imageBase64 = body.imageBase64;
     const mimeType = body.mimeType || "image/jpeg";
     const language = body.language === "en" || body.analysisLanguage === "en" ? "en" : "ro";
+    const buildingHint = String(body.buildingHint || "").trim().slice(0, 200);
+    const bucharestHint = body.bucharestHint === true || body.bucharestHint === "true";
 
     if (!imageBase64) return json(400, { error: language === "en" ? "Missing image." : "Lipsește imaginea." });
 
     const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-5-20250929";
-    const prompt = buildPrompt(language);
+    const prompt = buildPrompt(language, { buildingHint, bucharestHint });
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
