@@ -1002,7 +1002,40 @@ document.addEventListener("DOMContentLoaded", function() {
         minimalist: "Photorealistic architectural visualization. Keep the exact camera angle, perspective, street layout, and building massing of the original photo unchanged. Reimagine all visible building facades in Nordic-Scandinavian minimalist architecture: untreated silver-grey vertical larch wood board cladding or pale white render, large flush triple-glazed windows with no visible frames, raw concrete or dark basalt plinth at ground floor, no ornament. Sparse street planting: silver birch trees, white gravel beds. Overcast Nordic daylight. Atmosphere of Helsinki, Oslo, or Copenhagen designed by Snohetta or SANAA.",
         mediteranean: "Photorealistic architectural visualization. Keep the exact camera angle, perspective, street layout, and building massing of the original photo unchanged. Reimagine all visible building facades in Southern Mediterranean vernacular style: sun-bleached lime plaster walls in dusty ochre, warm terracotta, and faded sienna, deep-set arched windows with weathered timber shutters in faded cobalt blue or sage green, wrought-iron balconies with cascading bougainvillea, terracotta roof tiles, rough cobblestone street. Strong midday directional shadows. Atmosphere of Valletta, Dubrovnik, or Lisbon Alfama.",
         artnouv: "Photorealistic architectural visualization. Keep the exact camera angle, perspective, street layout, and building massing of the original photo unchanged. Reimagine all visible building facades in Art Nouveau style (Victor Horta, Hector Guimard, circa 1895-1910): sinuous cast-iron ornamental window frames shaped like plant stems and vines, glazed ceramic tile panels with stylized floral motifs in sage green, gold, and ivory, curved stone lintels, stained glass transoms above windows and doors, mosaic tile thresholds. Atmosphere of Brussels or Nancy. Warm morning light.",
-        brutalist: "Photorealistic architectural visualization. Keep the exact camera angle, perspective, street layout, and building massing of the original photo unchanged. Reimagine all visible building facades in Brutalist architecture style (1960s-1970s, Le Corbusier): exposed board-formed beton brut concrete with visible timber formwork grain texture, deeply recessed windows set in raw concrete reveals, massive cantilevered floor plates and overhanging volumes, no surface cladding, no paint, no ornament. Dramatic low raking side light. Atmosphere of the Barbican in London.",
+        brutalist: "Photorealistic architectural visualization. Keep the exact camera angle, perspective, street layout, and building massing of the original photo unchanged. Reimagine all visible building facades in Brutalist architecture style.
+RULES:
+- Preserve exactly: number of floors, building silhouette, window count, massing, roof shape, street scene, camera angle, people, vehicles, trees
+- Transform only: facade materials, surface treatment, window reveals, balcony railings, ground floor expression
+- Output must look like a real photograph, not a render
+
+MANDATORY VARIATION — apply ALL of the following randomly each time:
+
+1. SUB-STYLE: pick one randomly —
+Soviet Brutalism / British New Brutalism / Yugoslav Brutalism / Romanian Communist Modernism / American Late Brutalism / Japanese Metabolism
+
+2. CONCRETE TEXTURE: pick one randomly —
+smooth off-form with tie holes / ribbed corduroy grooves / bush-hammered aggregate / board-formed wood grain / fluted split-rib / polished aggregate / rough irregular shuttering
+
+3. WINDOW TREATMENT: pick one randomly —
+deeply recessed 60cm reveals / horizontal brise-soleil louvres / splayed concrete jambs / narrow vertical fin slots / cellular honeycomb frames / strip windows behind projecting slabs / small punched square grid
+
+4. STRUCTURAL DETAIL: pick one randomly —
+exposed columns as vertical fins / projecting floor slab bands / cantilevered upper floors / external shear wall buttresses / ground floor pilotis / exposed waffle slab soffit / external service core tower
+
+5. CONCRETE TONE: pick one randomly —
+warm beige-grey / dark charcoal anthracite / cool pale grey / rust-streaked weathered grey / ochre-tinted Eastern European / raw mid-grey utilitarian
+
+6. PATINA: pick one randomly —
+newly built clean / aged 20-30 years with moss and stains / heavily weathered with efflorescence / recently restored / contemporary conversion with new glazing
+
+7. LIGHTING: pick one randomly —
+harsh midday contrast / low raking afternoon sun / overcast diffused / golden hour warm / post-rain wet concrete
+
+NEVER reference or copy: Barbican London, Trellick Tower, Habitat 67, Boston City Hall, or any other famous brutalist landmark.
+NEVER produce a generic brutalist tower that ignores the original building.
+NEVER apply the transformation to neighboring buildings.
+Every generation must be visibly different from the previous one.
+Be specific, surprising, and architecturally coherent.",
         artdeco: "Photorealistic architectural visualization. Keep the exact camera angle, perspective, street layout, and building massing of the original photo unchanged. Reimagine all visible building facades in Art Deco style (1925-1940): pale cream limestone or travertine cladding with vertical fluting and pilasters, geometric low-relief ornament at cornice, bronze window frames with chevron and sunburst grille patterns, stepped setback upper floors, decorative crown with gilded geometric motifs. Atmosphere of an elegant interwar boulevard in New York or Paris. Warm late afternoon light.",
         moorish: "Photorealistic architectural visualization. Keep the exact camera angle, perspective, street layout, and building massing of the original photo unchanged. Reimagine all visible building facades in Moorish-Islamic architecture style: lower facade clad in intricate geometric zellige mosaic tiles in turquoise, cobalt, ivory, and terracotta, upper facade in carved white plaster with arabesques and calligraphic bands, horseshoe arched windows and doors with muqarnas hoods in carved stucco. Atmosphere of Granada, Fez, or Seville. Warm afternoon light, deep carved shadows.",
         japonez: "Photorealistic architectural visualization. Keep the exact camera angle, perspective, street layout, and building massing of the original photo unchanged. Reimagine all visible building facades in traditional Japanese architecture style (Edo period machiya townhouse): dark stained timber post-and-beam structural frame visible on facade, white lime plaster infill panels, deep overhanging curved clay-tiled roofs with upturned eaves, shoji screen windows with white paper and dark wood grid, stone garden strip at base. Atmosphere of Kyoto or Kanazawa. Overcast diffused light.",
